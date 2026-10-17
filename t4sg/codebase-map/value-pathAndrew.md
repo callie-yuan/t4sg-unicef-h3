@@ -139,7 +139,7 @@ GET http://localhost:2000/api/v1/indicators/319/data/
 
 ## 2. Diagram
 
-![Value path: upload → storage → API → browser](./diagramT4SGMapping.png)
+![Value path: upload → storage → API → browser](./diagramT4SGMappingAndrew.png)
 
 **How to read it:** the top half is the write path (upload → validate against GeoRepo/Entity → stage → store). The bottom half is the read path (browser → API → SQL → JSON → joined onto admin polygons). The `Entity` table and the ucode join are the two places where "a number belongs to a district" is built in.
 
