@@ -18,4 +18,5 @@ from django.conf.urls import url, include
 
 urlpatterns = [
     url(r'^', include('geosight.data.urls_v1')),
+    url(r'^', include('geosight.h3grid.urls')),
 ]
