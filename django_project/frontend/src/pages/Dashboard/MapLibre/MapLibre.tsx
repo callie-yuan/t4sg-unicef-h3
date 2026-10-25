@@ -39,6 +39,7 @@ import { cogProtocol } from "@geomatico/maplibre-cog-protocol";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import MapLegend from "./MapLegend";
 import ReferenceLayers from "./Layers/ReferenceLayer";
+import H3IndicatorLayer from "./Layers/H3IndicatorLayer";
 import ReferenceLayerCentroid from "./ReferenceLayerCentroid";
 import { MapSwitcher } from "./MapSwitcher";
 import SearchGeometryInputController from "../Toolbars/SearchGeometryInput/Controller";
@@ -397,6 +398,11 @@ export default function MainMapLibre({
         firstLayer={indicatorLayers[0]}
         secondLayer={indicatorLayers[1]}
       />
+      <H3IndicatorLayer
+        mapId={id}
+        map={map}
+        indicatorLayer={indicatorLayers[0]}
+      />
       <_MapLibre
         id={id}
         container={container}
@@ -444,6 +450,7 @@ export function MirrorMapLibre({ id }: { id: number }) {
         firstLayer={mirrorLayer}
         secondLayer={null}
       />
+      <H3IndicatorLayer mapId={id} map={map} indicatorLayer={mirrorLayer} />
       <_MapLibre
         id={id}
         container={container}
