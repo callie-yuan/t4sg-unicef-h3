@@ -1,0 +1,1028 @@
+{
+ "resolutions": [
+  5,
+  7
+ ],
+ "values": {
+  "5": [
+   {
+    "geom_id": "857a1893fffffff",
+    "value": 83.11
+   },
+   {
+    "geom_id": "857a189bfffffff",
+    "value": 62.87
+   },
+   {
+    "geom_id": "857a18d3fffffff",
+    "value": 61.27
+   },
+   {
+    "geom_id": "857a18d7fffffff",
+    "value": 49.95
+   },
+   {
+    "geom_id": "857a1c03fffffff",
+    "value": 76.08
+   },
+   {
+    "geom_id": "857a1c07fffffff",
+    "value": 65.88
+   },
+   {
+    "geom_id": "857a1c0bfffffff",
+    "value": 82.09
+   },
+   {
+    "geom_id": "857a1c0ffffffff",
+    "value": 83.44
+   },
+   {
+    "geom_id": "857a1c13fffffff",
+    "value": 34.19
+   },
+   {
+    "geom_id": "857a1c17fffffff",
+    "value": 35.16
+   },
+   {
+    "geom_id": "857a1c1bfffffff",
+    "value": 60.14
+   },
+   {
+    "geom_id": "857a1c23fffffff",
+    "value": 20.75
+   },
+   {
+    "geom_id": "857a1c2bfffffff",
+    "value": 51.65
+   },
+   {
+    "geom_id": "857a1c2ffffffff",
+    "value": 56.85
+   },
+   {
+    "geom_id": "857a1c33fffffff",
+    "value": 36.16
+   },
+   {
+    "geom_id": "857a1c3bfffffff",
+    "value": 51.77
+   },
+   {
+    "geom_id": "857a1c43fffffff",
+    "value": 44.6
+   },
+   {
+    "geom_id": "857a1c47fffffff",
+    "value": 53.01
+   },
+   {
+    "geom_id": "857a1c4bfffffff",
+    "value": 77.2
+   },
+   {
+    "geom_id": "857a1c4ffffffff",
+    "value": 51.2
+   },
+   {
+    "geom_id": "857a1c53fffffff",
+    "value": 14.28
+   },
+   {
+    "geom_id": "857a1c57fffffff",
+    "value": 47.41
+   },
+   {
+    "geom_id": "857a1c5bfffffff",
+    "value": 36.87
+   },
+   {
+    "geom_id": "857a1c63fffffff",
+    "value": 18.11
+   },
+   {
+    "geom_id": "857a1c67fffffff",
+    "value": 49.13
+   },
+   {
+    "geom_id": "857a1c6bfffffff",
+    "value": 19.15
+   },
+   {
+    "geom_id": "857a1c6ffffffff",
+    "value": 35.4
+   },
+   {
+    "geom_id": "857a1c73fffffff",
+    "value": 53.25
+   },
+   {
+    "geom_id": "857a1c77fffffff",
+    "value": 49.93
+   },
+   {
+    "geom_id": "857a1c7bfffffff",
+    "value": 20.59
+   },
+   {
+    "geom_id": "857a1cabfffffff",
+    "value": 49.0
+   },
+   {
+    "geom_id": "857a1cc7fffffff",
+    "value": 52.11
+   },
+   {
+    "geom_id": "857a1ccffffffff",
+    "value": 38.15
+   },
+   {
+    "geom_id": "857a1ea3fffffff",
+    "value": 49.95
+   },
+   {
+    "geom_id": "857a1ea7fffffff",
+    "value": 58.35
+   },
+   {
+    "geom_id": "857a1eb3fffffff",
+    "value": 68.06
+   },
+   {
+    "geom_id": "857a1eb7fffffff",
+    "value": 34.14
+   }
+  ],
+  "7": [
+   {
+    "geom_id": "877a1c01affffff",
+    "value": 89.22
+   },
+   {
+    "geom_id": "877a1c01bffffff",
+    "value": 89.25
+   },
+   {
+    "geom_id": "877a1c080ffffff",
+    "value": 82.09
+   },
+   {
+    "geom_id": "877a1c081ffffff",
+    "value": 84.79
+   },
+   {
+    "geom_id": "877a1c082ffffff",
+    "value": 78.67
+   },
+   {
+    "geom_id": "877a1c083ffffff",
+    "value": 81.49
+   },
+   {
+    "geom_id": "877a1c084ffffff",
+    "value": 81.37
+   },
+   {
+    "geom_id": "877a1c085ffffff",
+    "value": 84.64
+   },
+   {
+    "geom_id": "877a1c086ffffff",
+    "value": 78.64
+   },
+   {
+    "geom_id": "877a1c088ffffff",
+    "value": 84.86
+   },
+   {
+    "geom_id": "877a1c089ffffff",
+    "value": 85.35
+   },
+   {
+    "geom_id": "877a1c08affffff",
+    "value": 80.97
+   },
+   {
+    "geom_id": "877a1c08bffffff",
+    "value": 81.68
+   },
+   {
+    "geom_id": "877a1c08cffffff",
+    "value": 86.69
+   },
+   {
+    "geom_id": "877a1c08dffffff",
+    "value": 87.75
+   },
+   {
+    "geom_id": "877a1c08effffff",
+    "value": 83.57
+   },
+   {
+    "geom_id": "877a1c090ffffff",
+    "value": 71.19
+   },
+   {
+    "geom_id": "877a1c091ffffff",
+    "value": 74.6
+   },
+   {
+    "geom_id": "877a1c092ffffff",
+    "value": 66.95
+   },
+   {
+    "geom_id": "877a1c093ffffff",
+    "value": 70.11
+   },
+   {
+    "geom_id": "877a1c095ffffff",
+    "value": 75.17
+   },
+   {
+    "geom_id": "877a1c098ffffff",
+    "value": 74.82
+   },
+   {
+    "geom_id": "877a1c099ffffff",
+    "value": 76.27
+   },
+   {
+    "geom_id": "877a1c09affffff",
+    "value": 69.64
+   },
+   {
+    "geom_id": "877a1c09bffffff",
+    "value": 70.97
+   },
+   {
+    "geom_id": "877a1c09cffffff",
+    "value": 77.4
+   },
+   {
+    "geom_id": "877a1c09dffffff",
+    "value": 79.54
+   },
+   {
+    "geom_id": "877a1c09effffff",
+    "value": 72.75
+   },
+   {
+    "geom_id": "877a1c0a1ffffff",
+    "value": 83.93
+   },
+   {
+    "geom_id": "877a1c0a3ffffff",
+    "value": 83.19
+   },
+   {
+    "geom_id": "877a1c0a8ffffff",
+    "value": 88.32
+   },
+   {
+    "geom_id": "877a1c0a9ffffff",
+    "value": 89.61
+   },
+   {
+    "geom_id": "877a1c0aaffffff",
+    "value": 87.12
+   },
+   {
+    "geom_id": "877a1c0abffffff",
+    "value": 88.74
+   },
+   {
+    "geom_id": "877a1c0acffffff",
+    "value": 86.52
+   },
+   {
+    "geom_id": "877a1c0adffffff",
+    "value": 88.3
+   },
+   {
+    "geom_id": "877a1c0aeffffff",
+    "value": 86.16
+   },
+   {
+    "geom_id": "877a1c0c0ffffff",
+    "value": 83.44
+   },
+   {
+    "geom_id": "877a1c0c1ffffff",
+    "value": 80.39
+   },
+   {
+    "geom_id": "877a1c0c2ffffff",
+    "value": 82.05
+   },
+   {
+    "geom_id": "877a1c0c3ffffff",
+    "value": 79.49
+   },
+   {
+    "geom_id": "877a1c0c4ffffff",
+    "value": 86.37
+   },
+   {
+    "geom_id": "877a1c0c5ffffff",
+    "value": 83.63
+   },
+   {
+    "geom_id": "877a1c0c6ffffff",
+    "value": 85.75
+   },
+   {
+    "geom_id": "877a1c0c8ffffff",
+    "value": 72.53
+   },
+   {
+    "geom_id": "877a1c0c9ffffff",
+    "value": 68.32
+   },
+   {
+    "geom_id": "877a1c0caffffff",
+    "value": 71.59
+   },
+   {
+    "geom_id": "877a1c0cbffffff",
+    "value": 68.0
+   },
+   {
+    "geom_id": "877a1c0ccffffff",
+    "value": 76.68
+   },
+   {
+    "geom_id": "877a1c0cdffffff",
+    "value": 72.4
+   },
+   {
+    "geom_id": "877a1c0ceffffff",
+    "value": 76.29
+   },
+   {
+    "geom_id": "877a1c0d0ffffff",
+    "value": 80.91
+   },
+   {
+    "geom_id": "877a1c0d1ffffff",
+    "value": 79.48
+   },
+   {
+    "geom_id": "877a1c0d2ffffff",
+    "value": 76.83
+   },
+   {
+    "geom_id": "877a1c0d3ffffff",
+    "value": 75.79
+   },
+   {
+    "geom_id": "877a1c0d4ffffff",
+    "value": 85.03
+   },
+   {
+    "geom_id": "877a1c0d5ffffff",
+    "value": 83.92
+   },
+   {
+    "geom_id": "877a1c0d6ffffff",
+    "value": 81.65
+   },
+   {
+    "geom_id": "877a1c0d8ffffff",
+    "value": 72.08
+   },
+   {
+    "geom_id": "877a1c0d9ffffff",
+    "value": 69.53
+   },
+   {
+    "geom_id": "877a1c0daffffff",
+    "value": 68.34
+   },
+   {
+    "geom_id": "877a1c0dbffffff",
+    "value": 66.39
+   },
+   {
+    "geom_id": "877a1c0dcffffff",
+    "value": 77.4
+   },
+   {
+    "geom_id": "877a1c0ddffffff",
+    "value": 74.75
+   },
+   {
+    "geom_id": "877a1c0deffffff",
+    "value": 74.19
+   },
+   {
+    "geom_id": "877a1c0e0ffffff",
+    "value": 86.63
+   },
+   {
+    "geom_id": "877a1c0e1ffffff",
+    "value": 84.04
+   },
+   {
+    "geom_id": "877a1c0e2ffffff",
+    "value": 88.05
+   },
+   {
+    "geom_id": "877a1c0e3ffffff",
+    "value": 85.77
+   },
+   {
+    "geom_id": "877a1c0e6ffffff",
+    "value": 88.38
+   },
+   {
+    "geom_id": "877a1c0e8ffffff",
+    "value": 78.83
+   },
+   {
+    "geom_id": "877a1c0eaffffff",
+    "value": 80.15
+   },
+   {
+    "geom_id": "877a1c0ebffffff",
+    "value": 76.0
+   },
+   {
+    "geom_id": "877a1c0ecffffff",
+    "value": 80.66
+   },
+   {
+    "geom_id": "877a1c0eeffffff",
+    "value": 82.67
+   },
+   {
+    "geom_id": "877a1c0f0ffffff",
+    "value": 89.33
+   },
+   {
+    "geom_id": "877a1c0f1ffffff",
+    "value": 88.28
+   },
+   {
+    "geom_id": "877a1c0f2ffffff",
+    "value": 87.94
+   },
+   {
+    "geom_id": "877a1c0f3ffffff",
+    "value": 87.26
+   },
+   {
+    "geom_id": "877a1c0f4ffffff",
+    "value": 89.99
+   },
+   {
+    "geom_id": "877a1c0f5ffffff",
+    "value": 89.47
+   },
+   {
+    "geom_id": "877a1c0f6ffffff",
+    "value": 89.49
+   },
+   {
+    "geom_id": "877a1c392ffffff",
+    "value": 59.94
+   },
+   {
+    "geom_id": "877a1c396ffffff",
+    "value": 64.07
+   },
+   {
+    "geom_id": "877a1c441ffffff",
+    "value": 53.58
+   },
+   {
+    "geom_id": "877a1c445ffffff",
+    "value": 56.69
+   },
+   {
+    "geom_id": "877a1c448ffffff",
+    "value": 49.05
+   },
+   {
+    "geom_id": "877a1c449ffffff",
+    "value": 48.52
+   },
+   {
+    "geom_id": "877a1c44affffff",
+    "value": 44.61
+   },
+   {
+    "geom_id": "877a1c44bffffff",
+    "value": 43.48
+   },
+   {
+    "geom_id": "877a1c44cffffff",
+    "value": 53.95
+   },
+   {
+    "geom_id": "877a1c44dffffff",
+    "value": 54.13
+   },
+   {
+    "geom_id": "877a1c44effffff",
+    "value": 49.49
+   },
+   {
+    "geom_id": "877a1c461ffffff",
+    "value": 62.7
+   },
+   {
+    "geom_id": "877a1c463ffffff",
+    "value": 58.69
+   },
+   {
+    "geom_id": "877a1c468ffffff",
+    "value": 62.77
+   },
+   {
+    "geom_id": "877a1c469ffffff",
+    "value": 64.26
+   },
+   {
+    "geom_id": "877a1c46affffff",
+    "value": 57.96
+   },
+   {
+    "geom_id": "877a1c46bffffff",
+    "value": 58.95
+   },
+   {
+    "geom_id": "877a1c46cffffff",
+    "value": 65.47
+   },
+   {
+    "geom_id": "877a1c46dffffff",
+    "value": 67.79
+   },
+   {
+    "geom_id": "877a1c46effffff",
+    "value": 60.91
+   },
+   {
+    "geom_id": "877a1c604ffffff",
+    "value": 20.05
+   },
+   {
+    "geom_id": "877a1c605ffffff",
+    "value": 22.15
+   },
+   {
+    "geom_id": "877a1c620ffffff",
+    "value": 28.57
+   },
+   {
+    "geom_id": "877a1c621ffffff",
+    "value": 29.89
+   },
+   {
+    "geom_id": "877a1c622ffffff",
+    "value": 23.32
+   },
+   {
+    "geom_id": "877a1c623ffffff",
+    "value": 24.73
+   },
+   {
+    "geom_id": "877a1c624ffffff",
+    "value": 33.53
+   },
+   {
+    "geom_id": "877a1c625ffffff",
+    "value": 34.2
+   },
+   {
+    "geom_id": "877a1c626ffffff",
+    "value": 27.79
+   },
+   {
+    "geom_id": "877a1c628ffffff",
+    "value": 29.4
+   },
+   {
+    "geom_id": "877a1c62affffff",
+    "value": 24.92
+   },
+   {
+    "geom_id": "877a1c62cffffff",
+    "value": 31.73
+   },
+   {
+    "geom_id": "877a1c62dffffff",
+    "value": 34.06
+   },
+   {
+    "geom_id": "877a1c62effffff",
+    "value": 26.77
+   },
+   {
+    "geom_id": "877a1c630ffffff",
+    "value": 18.03
+   },
+   {
+    "geom_id": "877a1c631ffffff",
+    "value": 18.68
+   },
+   {
+    "geom_id": "877a1c634ffffff",
+    "value": 22.41
+   },
+   {
+    "geom_id": "877a1c635ffffff",
+    "value": 22.54
+   },
+   {
+    "geom_id": "877a1c636ffffff",
+    "value": 18.12
+   },
+   {
+    "geom_id": "877a1c700ffffff",
+    "value": 53.25
+   },
+   {
+    "geom_id": "877a1c701ffffff",
+    "value": 52.75
+   },
+   {
+    "geom_id": "877a1c702ffffff",
+    "value": 46.82
+   },
+   {
+    "geom_id": "877a1c703ffffff",
+    "value": 46.32
+   },
+   {
+    "geom_id": "877a1c704ffffff",
+    "value": 60.01
+   },
+   {
+    "geom_id": "877a1c705ffffff",
+    "value": 59.61
+   },
+   {
+    "geom_id": "877a1c706ffffff",
+    "value": 53.66
+   },
+   {
+    "geom_id": "877a1c708ffffff",
+    "value": 45.61
+   },
+   {
+    "geom_id": "877a1c709ffffff",
+    "value": 45.46
+   },
+   {
+    "geom_id": "877a1c70affffff",
+    "value": 39.4
+   },
+   {
+    "geom_id": "877a1c70bffffff",
+    "value": 39.51
+   },
+   {
+    "geom_id": "877a1c70cffffff",
+    "value": 52.21
+   },
+   {
+    "geom_id": "877a1c70dffffff",
+    "value": 51.66
+   },
+   {
+    "geom_id": "877a1c70effffff",
+    "value": 45.91
+   },
+   {
+    "geom_id": "877a1c710ffffff",
+    "value": 41.43
+   },
+   {
+    "geom_id": "877a1c711ffffff",
+    "value": 40.61
+   },
+   {
+    "geom_id": "877a1c712ffffff",
+    "value": 36.06
+   },
+   {
+    "geom_id": "877a1c713ffffff",
+    "value": 34.87
+   },
+   {
+    "geom_id": "877a1c714ffffff",
+    "value": 47.96
+   },
+   {
+    "geom_id": "877a1c715ffffff",
+    "value": 47.38
+   },
+   {
+    "geom_id": "877a1c716ffffff",
+    "value": 42.4
+   },
+   {
+    "geom_id": "877a1c718ffffff",
+    "value": 33.44
+   },
+   {
+    "geom_id": "877a1c719ffffff",
+    "value": 33.29
+   },
+   {
+    "geom_id": "877a1c71affffff",
+    "value": 27.82
+   },
+   {
+    "geom_id": "877a1c71bffffff",
+    "value": 27.54
+   },
+   {
+    "geom_id": "877a1c71cffffff",
+    "value": 39.97
+   },
+   {
+    "geom_id": "877a1c71dffffff",
+    "value": 39.56
+   },
+   {
+    "geom_id": "877a1c71effffff",
+    "value": 33.98
+   },
+   {
+    "geom_id": "877a1c720ffffff",
+    "value": 72.07
+   },
+   {
+    "geom_id": "877a1c721ffffff",
+    "value": 71.85
+   },
+   {
+    "geom_id": "877a1c722ffffff",
+    "value": 66.29
+   },
+   {
+    "geom_id": "877a1c723ffffff",
+    "value": 66.16
+   },
+   {
+    "geom_id": "877a1c724ffffff",
+    "value": 77.09
+   },
+   {
+    "geom_id": "877a1c725ffffff",
+    "value": 77.27
+   },
+   {
+    "geom_id": "877a1c726ffffff",
+    "value": 71.79
+   },
+   {
+    "geom_id": "877a1c728ffffff",
+    "value": 64.81
+   },
+   {
+    "geom_id": "877a1c729ffffff",
+    "value": 63.66
+   },
+   {
+    "geom_id": "877a1c72affffff",
+    "value": 59.0
+   },
+   {
+    "geom_id": "877a1c72bffffff",
+    "value": 58.21
+   },
+   {
+    "geom_id": "877a1c72cffffff",
+    "value": 71.12
+   },
+   {
+    "geom_id": "877a1c72dffffff",
+    "value": 69.94
+   },
+   {
+    "geom_id": "877a1c72effffff",
+    "value": 65.66
+   },
+   {
+    "geom_id": "877a1c730ffffff",
+    "value": 60.04
+   },
+   {
+    "geom_id": "877a1c731ffffff",
+    "value": 60.16
+   },
+   {
+    "geom_id": "877a1c732ffffff",
+    "value": 54.13
+   },
+   {
+    "geom_id": "877a1c733ffffff",
+    "value": 53.96
+   },
+   {
+    "geom_id": "877a1c734ffffff",
+    "value": 65.35
+   },
+   {
+    "geom_id": "877a1c735ffffff",
+    "value": 66.02
+   },
+   {
+    "geom_id": "877a1c736ffffff",
+    "value": 59.64
+   },
+   {
+    "geom_id": "877a1c740ffffff",
+    "value": 49.93
+   },
+   {
+    "geom_id": "877a1c741ffffff",
+    "value": 49.76
+   },
+   {
+    "geom_id": "877a1c742ffffff",
+    "value": 46.1
+   },
+   {
+    "geom_id": "877a1c743ffffff",
+    "value": 46.71
+   },
+   {
+    "geom_id": "877a1c744ffffff",
+    "value": 54.05
+   },
+   {
+    "geom_id": "877a1c745ffffff",
+    "value": 52.97
+   },
+   {
+    "geom_id": "877a1c746ffffff",
+    "value": 50.23
+   },
+   {
+    "geom_id": "877a1c750ffffff",
+    "value": 40.63
+   },
+   {
+    "geom_id": "877a1c751ffffff",
+    "value": 41.65
+   },
+   {
+    "geom_id": "877a1c752ffffff",
+    "value": 35.28
+   },
+   {
+    "geom_id": "877a1c753ffffff",
+    "value": 36.78
+   },
+   {
+    "geom_id": "877a1c754ffffff",
+    "value": 45.48
+   },
+   {
+    "geom_id": "877a1c755ffffff",
+    "value": 45.69
+   },
+   {
+    "geom_id": "877a1c756ffffff",
+    "value": 39.92
+   },
+   {
+    "geom_id": "877a1c75cffffff",
+    "value": 42.96
+   },
+   {
+    "geom_id": "877a1c75effffff",
+    "value": 38.66
+   },
+   {
+    "geom_id": "877a1c760ffffff",
+    "value": 61.64
+   },
+   {
+    "geom_id": "877a1c761ffffff",
+    "value": 58.98
+   },
+   {
+    "geom_id": "877a1c762ffffff",
+    "value": 58.87
+   },
+   {
+    "geom_id": "877a1c763ffffff",
+    "value": 57.0
+   },
+   {
+    "geom_id": "877a1c764ffffff",
+    "value": 66.6
+   },
+   {
+    "geom_id": "877a1c765ffffff",
+    "value": 63.38
+   },
+   {
+    "geom_id": "877a1c766ffffff",
+    "value": 64.13
+   },
+   {
+    "geom_id": "877a1c768ffffff",
+    "value": 53.18
+   },
+   {
+    "geom_id": "877a1c76affffff",
+    "value": 51.94
+   },
+   {
+    "geom_id": "877a1c76cffffff",
+    "value": 56.23
+   },
+   {
+    "geom_id": "877a1c76effffff",
+    "value": 55.09
+   },
+   {
+    "geom_id": "877a1c770ffffff",
+    "value": 56.25
+   },
+   {
+    "geom_id": "877a1c771ffffff",
+    "value": 55.16
+   },
+   {
+    "geom_id": "877a1c772ffffff",
+    "value": 51.12
+   },
+   {
+    "geom_id": "877a1c773ffffff",
+    "value": 50.64
+   },
+   {
+    "geom_id": "877a1c774ffffff",
+    "value": 62.26
+   },
+   {
+    "geom_id": "877a1c775ffffff",
+    "value": 60.64
+   },
+   {
+    "geom_id": "877a1c776ffffff",
+    "value": 57.28
+   },
+   {
+    "geom_id": "877a1c785ffffff",
+    "value": 22.57
+   },
+   {
+    "geom_id": "877a1c7a0ffffff",
+    "value": 33.49
+   },
+   {
+    "geom_id": "877a1c7a1ffffff",
+    "value": 31.48
+   },
+   {
+    "geom_id": "877a1c7a3ffffff",
+    "value": 27.85
+   },
+   {
+    "geom_id": "877a1c7a4ffffff",
+    "value": 39.18
+   },
+   {
+    "geom_id": "877a1c7a5ffffff",
+    "value": 37.52
+   },
+   {
+    "geom_id": "877a1c7a8ffffff",
+    "value": 24.01
+   },
+   {
+    "geom_id": "877a1c7a9ffffff",
+    "value": 22.91
+   },
+   {
+    "geom_id": "877a1c7aaffffff",
+    "value": 20.43
+   },
+   {
+    "geom_id": "877a1c7abffffff",
+    "value": 18.93
+   },
+   {
+    "geom_id": "877a1c7acffffff",
+    "value": 29.82
+   },
+   {
+    "geom_id": "877a1c7adffffff",
+    "value": 28.59
+   },
+   {
+    "geom_id": "877a1c7aeffffff",
+    "value": 25.68
+   }
+  ]
+ }
+}
