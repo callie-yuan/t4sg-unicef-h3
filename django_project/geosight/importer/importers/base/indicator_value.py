@@ -19,12 +19,14 @@ from abc import ABC
 from datetime import datetime, date
 from typing import List
 
+import h3
 from django.core.exceptions import ValidationError
 from requests.exceptions import Timeout
 
 from core.utils import string_is_true
 from geosight.data.models.indicator import (
-    Indicator, IndicatorValueRejectedError, VALUE_IS_EMPTY_TEXT
+    Indicator, IndicatorValue, IndicatorValueRejectedError,
+    VALUE_IS_EMPTY_TEXT
 )
 from geosight.data.models.indicator.indicator_type import (
     IndicatorType
@@ -32,6 +34,7 @@ from geosight.data.models.indicator.indicator_type import (
 from geosight.data.utils import extract_time_string
 from geosight.georepo.models.entity import Entity
 from geosight.georepo.models.reference_layer import ReferenceLayerView
+from geosight.h3grid.validation import validate_column
 from geosight.importer.attribute import ImporterAttribute
 from geosight.importer.exception import ImporterError
 from geosight.importer.importers.query_data import QueryDataImporter
@@ -202,6 +205,16 @@ class AbstractImporterIndicatorValue(BaseImporter, QueryDataImporter, ABC):
                 required=False
             ),
         ]
+
+    @property
+    def is_h3(self) -> bool:
+        """Return True if the importer's reference layer is an H3 grid.
+
+        :return: Whether this import uses H3 cell IDs as location codes.
+        :rtype: bool
+        """
+        reference_layer = self.importer.reference_layer
+        return bool(reference_layer and reference_layer.is_h3)
 
     def check_attributes(self):
         """Check attributes definition.
@@ -446,6 +459,55 @@ class AbstractImporterIndicatorValue(BaseImporter, QueryDataImporter, ABC):
         except Timeout:
             raise ImporterError('Identifying codes from GeoRepo is timeout.')
 
+    def check_h3_codes(self, codes: list, records: list, notes: list):
+        """Validate the H3 cell IDs of an H3 import with validate_column.
+
+        Used instead of the GeoRepo lookup when the reference layer is H3.
+        A valid code replaces geo_code with the cleaned cell ID and sets
+        admin_level to the cell's resolution. An invalid code gets a
+        geo_code note, so the row shows as an error.
+
+        :param codes: The H3 column, one code per record.
+        :type codes: list
+        :param records: Clean records, updated in place.
+        :type records: list
+        :param notes: Notes of the records, updated in place.
+        :type notes: list
+        :return: True if every code is a valid H3 cell ID.
+        :rtype: bool
+        """
+        valid_ids, errors = validate_column(codes)
+
+        # validate_column counts rows from 2 (row 1 is the header)
+        bad_rows = {error['row']: error['message'] for error in errors}
+        valid_ids = iter(valid_ids)
+        for idx in range(len(codes)):
+            row = idx + 2
+            if row in bad_rows:
+                notes[idx]['geo_code'] = bad_rows[row]
+            else:
+                cell = next(valid_ids)
+                records[idx]['geo_code'] = cell
+                records[idx]['admin_level'] = h3.get_resolution(cell)
+        return not errors
+
+    def h3_error_summary(self, notes: list) -> str:
+        """Return the error summary line for each bad row of an H3 import.
+
+        :param notes: Notes of the records, in row order.
+        :type notes: list
+        :return: One line per bad row with its row number and errors.
+        :rtype: str
+        """
+        lines = []
+        for idx, note in enumerate(notes):
+            errors = [
+                f'{value}' for key, value in note.items() if key != 'warning'
+            ]
+            if errors:
+                lines.append(f'Row {idx + 2}: {", ".join(errors)}')
+        return '\n'.join(lines)
+
     def _check_data_to_log(self, data: dict, note: dict) -> (dict, dict):
         """Save data that constructed from importer.
 
@@ -463,6 +525,64 @@ class AbstractImporterIndicatorValue(BaseImporter, QueryDataImporter, ABC):
         except (KeyError, ValueError, TypeError):
             pass
         return data, note
+
+    def after_import(self, success, note):
+        """After import.
+
+        H3 imports save every valid row and report the bad rows in the
+        error summary, instead of failing the whole file. Other imports
+        keep the default behaviour.
+
+        :param success: Whether every row passed the checks.
+        :type success: bool
+        :param note: Notes to show on the import log.
+        :type note: str
+        """
+        if not self.is_h3:
+            return super().after_import(success, note)
+
+        if not self.log.importer.need_review:
+            logs = self.log.importerlogdata_set.order_by('id')
+            for log_data in logs:
+                self._save_log_data_to_model(log_data)
+
+    def _save_h3_value(self, indicator: Indicator, data: dict, extras: dict):
+        """Save one row of an H3 import as an IndicatorValue.
+
+        Works like Indicator.save_value, but without the GeoRepo entity
+        lookup: geom_id is the H3 cell ID and admin_level is its resolution.
+
+        :param indicator: Indicator the value belongs to.
+        :type indicator: Indicator
+        :param data: Row data from the import log.
+        :type data: dict
+        :param extras: Extra columns to save with the value.
+        :type extras: dict
+        :return: The saved indicator value.
+        :rtype: IndicatorValue
+        """
+        value, comment = indicator.validate(data['value'])
+        if comment:
+            try:
+                extras['description'] += ' ' + comment
+            except KeyError:
+                extras['description'] = comment
+
+        indicator_value, _ = IndicatorValue.objects.get_or_create(
+            indicator=indicator,
+            date=datetime.fromtimestamp(data['date_time']),
+            geom_id=data['geo_code']
+        )
+        if indicator.type == IndicatorType.STRING:
+            indicator_value.value_str = value
+        else:
+            indicator_value.value = value
+        indicator_value.admin_level = data['admin_level']
+        indicator_value.save()
+
+        for extra_key, extra_value in extras.items():
+            indicator_value.add_extra_value(extra_key, extra_value)
+        return indicator_value
 
     def _save_log_data_to_model(self, log_data: ImporterLogData):
         """Save data from log to actual model.
@@ -502,12 +622,15 @@ class AbstractImporterIndicatorValue(BaseImporter, QueryDataImporter, ABC):
             if data['geo_code'] in [None, '']:
                 return
 
-            indicator.save_value(
-                datetime.fromtimestamp(data['date_time']),
-                data['geo_code'],
-                data['value'], reference_layer, data['admin_level'],
-                extras=extras
-            )
+            if self.is_h3:
+                self._save_h3_value(indicator, data, extras)
+            else:
+                indicator.save_value(
+                    datetime.fromtimestamp(data['date_time']),
+                    data['geo_code'],
+                    data['value'], reference_layer, data['admin_level'],
+                    extras=extras
+                )
             log_data.saved = True
             log_data.save()
 
@@ -865,5 +988,11 @@ class AbstractImporterIndicatorValue(BaseImporter, QueryDataImporter, ABC):
                 f'There are {warning_data} warning(s)'
                 f'</div>'
             )
+
+        # H3 imports report every bad row in the error summary
+        if self.is_h3:
+            summary = self.h3_error_summary(notes)
+            if summary:
+                additional_notes.append(summary)
 
         return success, '\n'.join(additional_notes)

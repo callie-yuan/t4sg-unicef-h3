@@ -115,6 +115,10 @@ class IndicatorValueLongFormat(AbstractImporterIndicatorValue, ABC):
         checked_geocode = []
         invalid_check_idx = []
 
+        # H3 imports check the whole column with validate_column at the end
+        is_h3 = self.is_h3
+        h3_codes = []
+
         # Save the clean records
         clean_records = []
         notes = []
@@ -170,17 +174,21 @@ class IndicatorValueLongFormat(AbstractImporterIndicatorValue, ABC):
 
             # ----------------------------------------
             # Check admin level
-            try:
-                admin_level = self.get_admin_level_from_data(record)
-                data['admin_level'] = admin_level
-            except KeyError:
-                note['admin_level'] = 'Admin level is required'
-            except ValueError:
-                note['admin_level'] = 'Admin level is not integer'
+            # (H3 imports use the cell's resolution instead)
+            if not is_h3:
+                try:
+                    admin_level = self.get_admin_level_from_data(record)
+                    data['admin_level'] = admin_level
+                except KeyError:
+                    note['admin_level'] = 'Admin level is required'
+                except ValueError:
+                    note['admin_level'] = 'Admin level is not integer'
 
             # ----------------------------------------
             # Check the geocode
-            if not geo_code:
+            if is_h3:
+                h3_codes.append(geo_code)
+            elif not geo_code:
                 note['warning'] = 'Administrative code is empty'
             else:
                 data[code_type] = geo_code
@@ -210,6 +218,11 @@ class IndicatorValueLongFormat(AbstractImporterIndicatorValue, ABC):
             except ValueError:
                 pass
             if len(note_keys):
+                success = False
+
+        # Checking H3 codes
+        if is_h3:
+            if not self.check_h3_codes(h3_codes, clean_records, notes):
                 success = False
 
         # Checking missing geocode
