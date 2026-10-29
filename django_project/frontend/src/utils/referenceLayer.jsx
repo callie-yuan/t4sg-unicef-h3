@@ -187,6 +187,12 @@ export const RefererenceLayerUrls = {
     }
   },
 };
+
+/**
+ * Return true if the reference layer is an H3 grid
+ */
+export const isH3ReferenceLayer = (layer) => layer?.is_h3 === true;
+
 /**
  * Get Feature by concept UUID
  */

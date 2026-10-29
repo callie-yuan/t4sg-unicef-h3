@@ -239,6 +239,7 @@ const GeneralForm = memo(({}: Props) => {
                   }}
                   multipleSelection={false}
                   showSelected={false}
+                  includeH3={true}
                 />
               </div>
             </Grid>
