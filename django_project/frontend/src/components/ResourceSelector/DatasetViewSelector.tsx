@@ -15,6 +15,7 @@
 
 import React, { useState } from "react";
 import { GeorepoUrls } from "../../utils/georepo";
+import { isH3ReferenceLayer } from "../../utils/referenceLayer";
 import { ModalInputSelector } from "./ModalInputSelector";
 import { ModalFilterSelectorProps, ModalInputSelectorProps } from "./types";
 import { DatasetView } from "../../types/DatasetView";
@@ -31,7 +32,24 @@ const VALUE_LOCAL = "Local";
 
 const columns = [
   { field: "id", headerName: "id", hide: true },
-  { field: "name", headerName: "Name", flex: 1 },
+  {
+    field: "name",
+    headerName: "Name",
+    flex: 1,
+    renderCell: (params: any) => {
+      if (!isH3ReferenceLayer(params.row)) {
+        return params.value;
+      }
+      return (
+        <div>
+          <div>{params.value}</div>
+          <div style={{ color: "#888", fontSize: "0.8rem" }}>
+            Spatial index: H3
+          </div>
+        </div>
+      );
+    },
+  },
   { field: "description", headerName: "Description", flex: 1 },
   { field: "last_update", headerName: "Last Update", flex: 1 },
   {
@@ -73,7 +91,10 @@ export default function DatasetViewSelector({
 
   // Table properties
   multipleSelection,
-}: ModalInputSelectorProps) {
+
+  // Also list H3 reference layers
+  includeH3,
+}: ModalInputSelectorProps & { includeH3?: boolean }) {
   const [dataset, setDataset] = useState(null);
 
   // @ts-ignore
@@ -92,7 +113,8 @@ export default function DatasetViewSelector({
       ? dataset
         ? GeorepoUrls.WithDomain(`/search/dataset/${dataset}/view/list/`, true)
         : null
-      : "/api/v1/reference-datasets/?page=1&page_size=25&fields=uuid,bbox,vector_tiles,possible_id_types,dataset_levels,tags,permission,version_data,created_at,modified_at,identifier,name,description,in_georepo,modified_by";
+      : "/api/v1/reference-datasets/?page=1&page_size=25&fields=uuid,bbox,vector_tiles,possible_id_types,dataset_levels,tags,permission,version_data,created_at,modified_at,identifier,name,description,in_georepo,modified_by" +
+        (includeH3 ? ",is_h3&include_h3=true" : "");
 
   /*** Parameters Changed */
   const getParameters = (parameters: any) => {

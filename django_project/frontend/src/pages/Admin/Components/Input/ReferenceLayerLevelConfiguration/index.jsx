@@ -26,7 +26,10 @@ import { GeorepoUrls } from "../../../../../utils/georepo";
 import { FormControlLabel, FormGroup } from "@mui/material";
 import { InternalReferenceDatasets } from "../../../../../utils/urls";
 import { Actions } from "../../../../../store/dashboard";
-import { RefererenceLayerUrls } from "../../../../../utils/referenceLayer";
+import {
+  isH3ReferenceLayer,
+  RefererenceLayerUrls,
+} from "../../../../../utils/referenceLayer";
 import DatasetViewSelector
   from "../../../../../components/ResourceSelector/DatasetViewSelector";
 
@@ -58,10 +61,16 @@ export const ViewLevelConfiguration = forwardRef(
     );
     const referenceLayerData = referenceLayerRequest?.data;
 
+    // H3 layers have resolutions instead of admin levels
+    const isH3 =
+      isH3ReferenceLayer(referenceLayer) ||
+      isH3ReferenceLayer(referenceLayerData);
+    const h3Config = referenceLayerData?.h3_config ?? referenceLayer?.h3_config;
+
     // When reference layer changed, fetch reference data
     const datasetLevels = referenceLayerData?.dataset_levels;
     useEffect(() => {
-      if (datasetLevels) {
+      if (datasetLevels && !isH3) {
         let updated = false;
 
         // Update levels
@@ -184,67 +193,81 @@ export const ViewLevelConfiguration = forwardRef(
             </Grid>
           </div>
         ) : null}
-        <Grid
-          container
-          spacing={2}
-          className="ReferenceLayerLevelConfiguration"
-        >
-          <Grid item xs={6}>
-            <div className="BasicFormSection">
-              <label className="form-label" htmlFor="group">
-                Default Level
-              </label>
-              <SelectWithSearch
-                name="default_admin"
-                placeholder={
-                  datasetLevels ? "Select default admin level" : "Loading"
-                }
-                options={levels}
-                value={defaultLevel ? defaultLevel : ""}
-                onChangeFn={(evt) => {
-                  data.default_level = datasetLevels?.find(
-                    (level) => level.level_name === evt,
-                  )?.level;
-                  setData({ ...data });
-                }}
-                disableCloseOnSelect={false}
-                fullWidth={true}
-                smallHeight={true}
-              />
+        {isH3 ? (
+          <div className="BasicFormSection ReferenceLayerH3Configuration">
+            <label className="form-label">H3 Settings</label>
+            <div>
+              {h3Config
+                ? `Default resolution ${h3Config.default_resolution}, ` +
+                  `range ${h3Config.min_resolution}-${h3Config.max_resolution}`
+                : referenceLayerData
+                  ? "No H3 settings configured for this layer."
+                  : "Loading"}
             </div>
-          </Grid>
+          </div>
+        ) : (
           <Grid
-            item
-            xs={6}
-            className="ReferenceLayerAvailableLevelsConfiguration"
+            container
+            spacing={2}
+            className="ReferenceLayerLevelConfiguration"
           >
-            <div className="BasicFormSection">
-              <label className="form-label" htmlFor="group">
-                Available Levels
-              </label>
-              <MultipleSelectWithSearch
-                placeholder={
-                  datasetLevels
-                    ? "Select available levels"
-                    : !referenceLayer?.identifier
-                      ? "Please select a view"
-                      : "Loading"
-                }
-                options={levels}
-                value={availableLayers ? availableLayers : []}
-                onChangeFn={(evt) => {
-                  data.levels = datasetLevels
-                    ?.filter((level) => evt.includes(level.level_name))
-                    .map((level) => level.level);
-                  setData({ ...data });
-                }}
-                fullWidth={true}
-                smallHeight={true}
-                showValues={true}
-              />
-            </div>
+            <Grid item xs={6}>
+              <div className="BasicFormSection">
+                <label className="form-label" htmlFor="group">
+                  Default Level
+                </label>
+                <SelectWithSearch
+                  name="default_admin"
+                  placeholder={
+                    datasetLevels ? "Select default admin level" : "Loading"
+                  }
+                  options={levels}
+                  value={defaultLevel ? defaultLevel : ""}
+                  onChangeFn={(evt) => {
+                    data.default_level = datasetLevels?.find(
+                      (level) => level.level_name === evt,
+                    )?.level;
+                    setData({ ...data });
+                  }}
+                  disableCloseOnSelect={false}
+                  fullWidth={true}
+                  smallHeight={true}
+                />
+              </div>
+            </Grid>
+            <Grid
+              item
+              xs={6}
+              className="ReferenceLayerAvailableLevelsConfiguration"
+            >
+              <div className="BasicFormSection">
+                <label className="form-label" htmlFor="group">
+                  Available Levels
+                </label>
+                <MultipleSelectWithSearch
+                  placeholder={
+                    datasetLevels
+                      ? "Select available levels"
+                      : !referenceLayer?.identifier
+                        ? "Please select a view"
+                        : "Loading"
+                  }
+                  options={levels}
+                  value={availableLayers ? availableLayers : []}
+                  onChangeFn={(evt) => {
+                    data.levels = datasetLevels
+                      ?.filter((level) => evt.includes(level.level_name))
+                      .map((level) => level.level);
+                    setData({ ...data });
+                  }}
+                  fullWidth={true}
+                  smallHeight={true}
+                  showValues={true}
+                />
+              </div>
+            </Grid>
           </Grid>
-        </Grid>
+        )}
       </>
     );
   },
