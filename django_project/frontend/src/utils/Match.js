@@ -49,6 +49,17 @@ const Match = {
       return found;
     },
     /***
+     * Return value in list if it is an H3 id column. If not found, return undefined.
+     * @param {Array} list List of data that will be checked
+     */
+    h3Id: (list = []) => {
+      return list.find((member) =>
+        ["h3id", "h3_id", "h3_index", "h3"].includes(
+          ("" + member).toLowerCase(),
+        ),
+      );
+    },
+    /***
      * Return value in list if it is date. If not found, return first member.
      * @param {Array} list List of data that will be checked
      */

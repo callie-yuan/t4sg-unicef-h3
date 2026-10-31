@@ -39,6 +39,7 @@ import CircularProgress from "@mui/material/CircularProgress";
 import { multiJsonToMultipleSheetsXlsx } from "../../../../utils/main";
 import DatasetViewSelector
   from "../../../../components/ResourceSelector/DatasetViewSelector";
+import { isH3ReferenceLayer } from "../../../../utils/referenceLayer";
 
 const defaultIdType = 'ucode'
 const ANY_LEVEL = 'Any Level (Data Driven)'
@@ -56,9 +57,15 @@ export const ReferenceLayerInput = forwardRef(
      data, setData, attributes, valueOnly, ...props
    }, ref
   ) => {
+    // H3 layers use the cell IDs, so admin level and code type are not needed
+    const isH3 = isH3ReferenceLayer(data.reference_layer_data)
+
     // Ready check
     useImperativeHandle(ref, () => ({
       isReady(data) {
+        if (isH3ReferenceLayer(data.reference_layer_data)) {
+          return !!data.reference_layer
+        }
         return !!(
           data.reference_layer && !(data.admin_level_type === BY_VALUE && data.admin_level_value === undefined) && data.admin_code_type
         )
@@ -259,6 +266,7 @@ export const ReferenceLayerInput = forwardRef(
                   data.reference_layer_data = reference
                   setData({ ...data })
                 }}
+                includeH3={props.includeH3}
               />
               <Button
                 variant="primary"
@@ -275,44 +283,47 @@ export const ReferenceLayerInput = forwardRef(
             </FormControl>
           </div>
         </Grid>
-        <Grid item xs={3}>
-          <label className="form-label required" htmlFor="group">
-            Admin Level
-          </label>
-          <RadioGroup
-            value={data?.admin_level_type ? data.admin_level_type : BY_VALUE}
-            onChange={evt => {
-              switchTo(evt.target.value)
-            }}
-          >
-            <FormControlLabel
-              disabled={valueOnly}
-              value={ANY_LEVEL} control={<Radio/>}
-              label={ANY_LEVEL}/>
-            <FormControlLabel
-              value={BY_VALUE} control={<Radio/>}
-              label={BY_VALUE}/>
-          </RadioGroup>
-          <div className="BasicFormSection" style={{ paddingTop: '2px' }}>
-            {
-              data.admin_level_type === BY_VALUE ?
-                <SelectWithList
-                  name='admin_level'
-                  required={true}
-                  placeholder={referenceLayer && referenceLayer.dataset_levels ? 'Select admin level' : 'Loading'}
-                  list={referenceLayer && referenceLayer.dataset_levels}
-                  value={data.admin_level_value}
-                  onChange={evt => {
-                    data.admin_level_value = evt.value
-                    setData({ ...data })
-                  }}
-                /> : null
-            }
-
-          </div>
-        </Grid>
         {
-          props.noGeoCode ? null :
+          isH3 ? null :
+            <Grid item xs={3}>
+              <label className="form-label required" htmlFor="group">
+                Admin Level
+              </label>
+              <RadioGroup
+                value={data?.admin_level_type ? data.admin_level_type : BY_VALUE}
+                onChange={evt => {
+                  switchTo(evt.target.value)
+                }}
+              >
+                <FormControlLabel
+                  disabled={valueOnly}
+                  value={ANY_LEVEL} control={<Radio/>}
+                  label={ANY_LEVEL}/>
+                <FormControlLabel
+                  value={BY_VALUE} control={<Radio/>}
+                  label={BY_VALUE}/>
+              </RadioGroup>
+              <div className="BasicFormSection" style={{ paddingTop: '2px' }}>
+                {
+                  data.admin_level_type === BY_VALUE ?
+                    <SelectWithList
+                      name='admin_level'
+                      required={true}
+                      placeholder={referenceLayer && referenceLayer.dataset_levels ? 'Select admin level' : 'Loading'}
+                      list={referenceLayer && referenceLayer.dataset_levels}
+                      value={data.admin_level_value}
+                      onChange={evt => {
+                        data.admin_level_value = evt.value
+                        setData({ ...data })
+                      }}
+                    /> : null
+                }
+
+              </div>
+            </Grid>
+        }
+        {
+          props.noGeoCode || isH3 ? null :
             <Grid item xs={3}>
               <label className="form-label required" htmlFor="group">
                 Type of Geo Code
