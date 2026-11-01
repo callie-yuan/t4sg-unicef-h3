@@ -12,7 +12,7 @@
  * __date__ = '04/06/2026'
  * __copyright__ = ('Copyright 2026, Unicef')
  */
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import maplibregl, {
   LayerSpecification,
@@ -21,6 +21,8 @@ import maplibregl, {
 import { MapboxOverlay } from "@deck.gl/mapbox/typed";
 
 import { Actions } from "../../../store/dashboard";
+import { isH3ReferenceLayer } from "../../../utils/referenceLayer";
+import type { RootState } from "../../../store/dashboard/reducers";
 import { selectIndicatorLayerByIdx } from "../../../selectors/indicatorLayers";
 import { customDrawStyles } from "../../../utils/MaplibreDrawingTools/Styles";
 import { removeLayer, removeSource } from "./utils";
@@ -38,8 +40,14 @@ import ContextLayers from "./Layers/ContextLayers";
 import { cogProtocol } from "@geomatico/maplibre-cog-protocol";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import MapLegend from "./MapLegend";
-import ReferenceLayers from "./Layers/ReferenceLayer";
-import H3IndicatorLayer from "./Layers/H3IndicatorLayer";
+import ReferenceLayers, {
+  FILL_LAYER_ID_KEY,
+  OUTLINE_LAYER_ID_KEY,
+  REFERENCE_LAYER_ID_KEY,
+} from "./Layers/ReferenceLayer";
+import H3IndicatorLayer, {
+  type H3ReferenceLayer,
+} from "./Layers/H3IndicatorLayer";
 import ReferenceLayerCentroid from "./ReferenceLayerCentroid";
 import { MapSwitcher } from "./MapSwitcher";
 import SearchGeometryInputController from "../Toolbars/SearchGeometryInput/Controller";
@@ -343,6 +351,42 @@ export interface Props {
   drawingRef?: React.MutableRefObject<any>;
 }
 
+/** Remove boundary graphics when the project switches to an H3 grid. */
+function useReferenceLayerCleanup(
+  map: maplibregl.Map | null,
+  deckgl: MapboxOverlay | null,
+  isH3: boolean,
+) {
+  const isH3Ref = useRef(isH3);
+  isH3Ref.current = isH3;
+
+  useLayoutEffect(() => {
+    if (!deckgl) return;
+
+    const originalSetProps = deckgl.setProps;
+    deckgl.setProps = (props) => {
+      // A boundary animation may still have a queued frame after unmount.
+      if (isH3Ref.current && props.layers?.length) return;
+      originalSetProps.call(deckgl, props);
+    };
+    return () => {
+      deckgl.setProps = originalSetProps;
+    };
+  }, [deckgl]);
+
+  useLayoutEffect(() => {
+    if (!map || !isH3) return;
+
+    for (const suffix of ["-0", "-1"]) {
+      const id = map.getContainer().id + suffix;
+      removeLayer(map, FILL_LAYER_ID_KEY + "-" + id);
+      removeLayer(map, OUTLINE_LAYER_ID_KEY + "-" + id);
+      removeSource(map, REFERENCE_LAYER_ID_KEY + "-" + id);
+    }
+    deckgl?.setProps({ layers: [] });
+  }, [map, deckgl, isH3]);
+}
+
 export default function MainMapLibre({
   id,
   setParentMap,
@@ -355,6 +399,14 @@ export default function MainMapLibre({
 
   // @ts-ignore
   const compareMode = useSelector((state) => state.mapMode.compareMode);
+
+  const referenceLayer = useSelector(
+    (state: RootState) =>
+      (state.dashboard as { data?: { referenceLayer?: H3ReferenceLayer } }).data
+        ?.referenceLayer,
+  );
+  const isH3 = isH3ReferenceLayer(referenceLayer);
+  useReferenceLayerCleanup(map, deckgl, isH3);
 
   // Indicator layers
   const firstLayer = useSelector(selectIndicatorLayerByIdx(0));
@@ -392,17 +444,21 @@ export default function MainMapLibre({
         />
       </div>
       <ContextLayers map={map} />
-      <ReferenceLayers
-        map={map}
-        deckgl={deckgl}
-        firstLayer={indicatorLayers[0]}
-        secondLayer={indicatorLayers[1]}
-      />
-      <H3IndicatorLayer
-        mapId={id}
-        map={map}
-        indicatorLayer={indicatorLayers[0]}
-      />
+      {isH3 ? (
+        <H3IndicatorLayer
+          mapId={id}
+          map={map}
+          indicatorLayer={indicatorLayers[0]}
+          referenceLayer={referenceLayer}
+        />
+      ) : (
+        <ReferenceLayers
+          map={map}
+          deckgl={deckgl}
+          firstLayer={indicatorLayers[0]}
+          secondLayer={indicatorLayers[1]}
+        />
+      )}
       <_MapLibre
         id={id}
         container={container}
@@ -425,6 +481,13 @@ export function MirrorMapLibre({ id }: { id: number }) {
     // @ts-ignore
     (state) => state.mapMode.sideBySideViewMode,
   );
+  const referenceLayer = useSelector(
+    (state: RootState) =>
+      (state.dashboard as { data?: { referenceLayer?: H3ReferenceLayer } }).data
+        ?.referenceLayer,
+  );
+  const isH3 = isH3ReferenceLayer(referenceLayer);
+  useReferenceLayerCleanup(map, deckgl, isH3);
 
   // In compare mode, MainMap renders both layers — mirror not needed
   // In non-compare mode, mirror renders the layer at this map's index
@@ -444,13 +507,21 @@ export function MirrorMapLibre({ id }: { id: number }) {
         <MapLegend firstLayer={mirrorLayer} secondLayer={null} />
       </div>
       <ContextLayers map={map} />
-      <ReferenceLayers
-        map={map}
-        deckgl={deckgl}
-        firstLayer={mirrorLayer}
-        secondLayer={null}
-      />
-      <H3IndicatorLayer mapId={id} map={map} indicatorLayer={mirrorLayer} />
+      {isH3 ? (
+        <H3IndicatorLayer
+          mapId={id}
+          map={map}
+          indicatorLayer={mirrorLayer}
+          referenceLayer={referenceLayer}
+        />
+      ) : (
+        <ReferenceLayers
+          map={map}
+          deckgl={deckgl}
+          firstLayer={mirrorLayer}
+          secondLayer={null}
+        />
+      )}
       <_MapLibre
         id={id}
         container={container}
