@@ -94,6 +94,11 @@ class H3ReferenceLayerConfig(models.Model):
         validators=H3_RESOLUTION_VALIDATORS
     )
 
+    clip_geometry = models.TextField(
+        null=True,
+        blank=True
+    )
+
     class Meta:  # noqa: D106
         app_label = 'geosight_h3grid'
 
