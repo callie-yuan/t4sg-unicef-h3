@@ -116,8 +116,8 @@ export default function H3IndicatorLayer({
   >(null);
   const [loadedValuesKey, setLoadedValuesKey] = useState<string | null>(null);
 
-  // deck.gl overlay owned by this layer. ReferenceLayer replaces all layers
-  // on the shared overlay, so H3 hexagons need their own.
+  // Use an overlaid deck.gl instance. Interleaved overlays share the map's
+  // deck instance, so removing this overlay would finalize ReferenceLayer's.
   const overlay = useRef<MapboxOverlay | null>(null);
   const layerId = `h3-indicator-layer-${mapId}`;
 
@@ -263,8 +263,12 @@ export default function H3IndicatorLayer({
     if (!map) {
       return;
     }
-    const deckgl = new MapboxOverlay({ interleaved: true, layers: [] });
-    map.addControl(deckgl as unknown as maplibregl.IControl);
+    const deckgl = new MapboxOverlay({ interleaved: false, layers: [] });
+    // Keep the independent canvas with the map, below popups and controls.
+    const container = deckgl.onAdd(
+      map as unknown as Parameters<MapboxOverlay["onAdd"]>[0],
+    );
+    map.getCanvasContainer().appendChild(container);
     overlay.current = deckgl;
 
     // GeoSight popups find clicked features with queryRenderedFeatures, which
@@ -284,7 +288,8 @@ export default function H3IndicatorLayer({
     map.on("click", onClick);
     return () => {
       map.off("click", onClick);
-      map.removeControl(deckgl as unknown as maplibregl.IControl);
+      deckgl.onRemove();
+      container.remove();
       overlay.current = null;
     };
   }, [map]);
