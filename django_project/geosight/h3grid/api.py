@@ -124,7 +124,7 @@ class H3IndicatorValuesAPI(_H3IndicatorAPI):
             if date is None:
                 return Response([])
             values = query.filter(date=date)
-        values = list(query.filter(date=date).values('geom_id', 'value'))
+        values = list(values.values('geom_id', 'value'))
         if aoi is not None:
             kept = set(cells_in_aoi([v['geom_id'] for v in values], aoi))
             values = [v for v in values if v['geom_id'] in kept]
