@@ -11,7 +11,7 @@ Contact : geosight-no-reply@unicef.org
 """
 
 from django.db.models import OuterRef, Subquery
-from django.http import HttpResponseBadRequest
+from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
 from rest_framework.exceptions import PermissionDenied
@@ -19,6 +19,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from geosight.data.models.indicator import Indicator, IndicatorValue
+from geosight.h3grid.clipping import cells_in_aoi, parse_aoi
+from geosight.h3grid.models import H3ReferenceLayer
 
 H3_CELL_REGEX = r'^8[0-9a-f]{14}$'
 H3_MIN_RESOLUTION = 0
@@ -35,6 +37,23 @@ def h3_values(indicator):
 class _H3IndicatorAPI(APIView):
     """Base H3 indicator API"""
 
+    def get_aoi(self, request):
+        """Return the clip area of ?reference_layer=<identifier>, or None.
+
+        None means no filtering: no parameter, or the layer has no clip.
+        """
+        identifier = request.GET.get('reference_layer')
+        if not identifier:
+            return None
+        layer = H3ReferenceLayer.objects.filter(identifier=identifier).first()
+        if layer is None:
+            raise Http404('H3 reference layer not found')
+        config = getattr(layer, 'h3_config', None)
+        text = config.clip_geometry if config else None
+        if not text or not text.strip():
+            return None
+        return parse_aoi(text)
+
     def get_indicator(self, request, pk):
         indicator = get_object_or_404(Indicator, pk=pk)
         readable = Indicator.permissions.read_data(request.user)
@@ -50,12 +69,22 @@ class H3IndicatorResolutionsAPI(_H3IndicatorAPI):
 
     def get(self, request, pk):
         indicator = self.get_indicator(request, pk)
-        levels = (
-            h3_values(indicator)
-            .values_list('admin_level', flat=True)
+        aoi = self.get_aoi(request)
+        values = h3_values(indicator)
+        levels = list(
+            values.values_list('admin_level', flat=True)
             .distinct().order_by('admin_level')
         )
-        return Response(list(levels))
+        if aoi is not None:
+            levels = [
+                level for level in levels
+                if cells_in_aoi(
+                    values.filter(admin_level=level)
+                    .values_list('geom_id', flat=True).distinct(),
+                    aoi
+                )
+            ]
+        return Response(levels)
 
 
 class H3IndicatorValuesAPI(_H3IndicatorAPI):
@@ -63,6 +92,7 @@ class H3IndicatorValuesAPI(_H3IndicatorAPI):
 
     def get(self, request, pk):
         indicator = self.get_indicator(request, pk)
+        aoi = self.get_aoi(request)
         try:
             resolution = int(request.GET.get('resolution'))
         except (TypeError, ValueError):
@@ -94,5 +124,8 @@ class H3IndicatorValuesAPI(_H3IndicatorAPI):
             if date is None:
                 return Response([])
             values = query.filter(date=date)
-
-        return Response(list(values.values('geom_id', 'value')))
+        values = list(query.filter(date=date).values('geom_id', 'value'))
+        if aoi is not None:
+            kept = set(cells_in_aoi([v['geom_id'] for v in values], aoi))
+            values = [v for v in values if v['geom_id'] in kept]
+        return Response(values)

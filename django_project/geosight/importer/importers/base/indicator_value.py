@@ -21,6 +21,7 @@ from typing import List
 
 import h3
 from django.core.exceptions import ValidationError
+from django.utils.html import escape
 from requests.exceptions import Timeout
 
 from core.utils import string_is_true
@@ -491,12 +492,14 @@ class AbstractImporterIndicatorValue(BaseImporter, QueryDataImporter, ABC):
                 records[idx]['admin_level'] = h3.get_resolution(cell)
         return not errors
 
-    def h3_error_summary(self, notes: list) -> str:
+    def h3_error_summary(self, notes: list, records: list) -> str:
         """Return the error summary line for each bad row of an H3 import.
 
         :param notes: Notes of the records, in row order.
         :type notes: list
-        :return: One line per bad row with its row number and errors.
+        :param records: Records of the import, in row order.
+        :type records: list
+        :return: One line per bad row with its row number, H3 id and errors.
         :rtype: str
         """
         lines = []
@@ -505,7 +508,10 @@ class AbstractImporterIndicatorValue(BaseImporter, QueryDataImporter, ABC):
                 f'{value}' for key, value in note.items() if key != 'warning'
             ]
             if errors:
-                lines.append(f'Row {idx + 2}: {", ".join(errors)}')
+                value = escape(records[idx].get('geo_code') or '')
+                lines.append(
+                    f'Row {idx + 2}, value "{value}": {", ".join(errors)}'
+                )
         return '\n'.join(lines)
 
     def _check_data_to_log(self, data: dict, note: dict) -> (dict, dict):
@@ -991,7 +997,7 @@ class AbstractImporterIndicatorValue(BaseImporter, QueryDataImporter, ABC):
 
         # H3 imports report every bad row in the error summary
         if self.is_h3:
-            summary = self.h3_error_summary(notes)
+            summary = self.h3_error_summary(notes, records)
             if summary:
                 additional_notes.append(summary)
 
