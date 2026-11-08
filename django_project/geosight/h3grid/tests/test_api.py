@@ -78,7 +78,7 @@ class H3IndicatorApiTest(APITestCase):
         )
 
     def test_values_with_date(self):
-        """An explicit date selects that date's values"""
+        """An explicit date selects each cell's latest value by that date."""
         response = self.assertRequestGetView(
             f'{self.values_url}?resolution=7&date={OLD.isoformat()}',
             200, user=self.admin
@@ -86,6 +86,38 @@ class H3IndicatorApiTest(APITestCase):
         self.assertEqual(
             response.json(), [{'geom_id': RES_7[0], 'value': 99}]
         )
+
+    def test_values_with_date_use_latest_value_per_cell(self):
+        """As-of dates use each cell's most recent earlier value."""
+        indicator = IndicatorF()
+        values_url = reverse('h3-indicator-values', args=[indicator.id])
+        for geom_id, value in [(RES_7[0], 20), (RES_7[1], 21)]:
+            IndicatorValueF(
+                indicator=indicator, geom_id=geom_id, admin_level=7,
+                value=value, date=date(2020, 1, 1)
+            )
+        IndicatorValueF(
+            indicator=indicator, geom_id=RES_7[0], admin_level=7,
+            value=25, date=date(2025, 1, 1)
+        )
+
+        for as_of_date, expected in [
+            ('2022-06-01', [
+                {'geom_id': RES_7[0], 'value': 20},
+                {'geom_id': RES_7[1], 'value': 21},
+            ]),
+            ('2026-01-01', [
+                {'geom_id': RES_7[0], 'value': 25},
+                {'geom_id': RES_7[1], 'value': 21},
+            ]),
+            ('2019-01-01', []),
+        ]:
+            with self.subTest(as_of_date=as_of_date):
+                response = self.assertRequestGetView(
+                    f'{values_url}?resolution=7&date={as_of_date}',
+                    200, user=self.admin
+                )
+                self.assertCountEqual(response.json(), expected)
 
     def test_values_no_data_for_resolution(self):
         """A resolution without H3 rows returns an empty list"""

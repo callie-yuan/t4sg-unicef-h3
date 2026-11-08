@@ -10,6 +10,7 @@ Contact : geosight-no-reply@unicef.org
 
 """
 
+from django.db.models import OuterRef, Subquery
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
@@ -87,7 +88,7 @@ class H3IndicatorResolutionsAPI(_H3IndicatorAPI):
 
 
 class H3IndicatorValuesAPI(_H3IndicatorAPI):
-    """Return H3 cell values of an indicator for a resolution and date (optional)"""
+    """Return H3 cell values for a resolution and optional as-of date."""
 
     def get(self, request, pk):
         indicator = self.get_indicator(request, pk)
@@ -110,13 +111,19 @@ class H3IndicatorValuesAPI(_H3IndicatorAPI):
             date = parse_date(date)
             if not date:
                 return HttpResponseBadRequest('date must be YYYY-MM-DD')
+            query = query.filter(date__lte=date)
+            latest_cell_value = (
+                query.filter(geom_id=OuterRef('geom_id'))
+                .order_by('-date', '-pk').values('pk')[:1]
+            )
+            values = query.filter(pk=Subquery(latest_cell_value))
         else:
             date = (
                 query.order_by('-date').values_list('date', flat=True).first()
             )
-        if date is None:
-            return Response([])
-
+            if date is None:
+                return Response([])
+            values = query.filter(date=date)
         values = list(query.filter(date=date).values('geom_id', 'value'))
         if aoi is not None:
             kept = set(cells_in_aoi([v['geom_id'] for v in values], aoi))
