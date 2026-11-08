@@ -32,6 +32,7 @@ import {
 import {
   SelectWithList
 } from "../../../../../../components/Input/SelectWithList";
+import { isH3ReferenceLayer } from "../../../../../../utils/referenceLayer";
 
 /**
  * Indicator Value Long Format.
@@ -67,6 +68,7 @@ export const BaseLongExcelIndicatorValue = forwardRef(
     }));
 
     const [attributes, setAttributes] = useState([])
+    const isH3 = isH3ReferenceLayer(data.reference_layer_data)
 
     // Set default data
     useEffect(
@@ -74,7 +76,10 @@ export const BaseLongExcelIndicatorValue = forwardRef(
         if (attributes?.length) {
           const newData = JSON.parse(JSON.stringify(data))
           // For key_administration_code
-          if (!isInOptions(attributes, newData.key_administration_code)) {
+          const h3Column = isH3 ? Match.inList.h3Id(optionsToList(attributes)) : null
+          if (h3Column) {
+            newData.key_administration_code = h3Column
+          } else if (!isInOptions(attributes, newData.key_administration_code)) {
             newData.key_administration_code = Match.inList.geocode(optionsToList(attributes))
           }
           // For shortcoce
@@ -85,9 +90,14 @@ export const BaseLongExcelIndicatorValue = forwardRef(
           if (!isInOptions(attributes, newData.key_value)) {
             newData.key_value = findMostMatched(optionsToList(attributes), 'value').value
           }
-          updateDataWithSetState(data, setData, newData)
+          if (h3Column && h3Column !== data.key_administration_code) {
+            // updateDataWithSetState keeps existing values, so set the H3 column directly
+            setData({ ...newData })
+          } else {
+            updateDataWithSetState(data, setData, newData)
+          }
         }
-      }, [attributes]
+      }, [attributes, isH3]
     )
 
     return <Fragment>
@@ -96,6 +106,7 @@ export const BaseLongExcelIndicatorValue = forwardRef(
         files={files} setFiles={setFiles}
         attributes={attributes}
         ref={indicatorValueFormRef}
+        includeH3={true}
       />
       <div className='FormAttribute'>
         {
@@ -112,7 +123,9 @@ export const BaseLongExcelIndicatorValue = forwardRef(
 
         {/* For other data */}
         <FormControl className="BasicFormSection">
-          <label className="form-label required">Geo Code Column</label>
+          <label className="form-label required">
+            {isH3 ? 'H3 ID Column' : 'Geo Code Column'}
+          </label>
           {
             !noAttributes ?
               <SelectWithList
