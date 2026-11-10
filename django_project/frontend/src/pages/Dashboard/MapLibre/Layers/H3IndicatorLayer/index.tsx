@@ -60,14 +60,21 @@ const H3Urls = {
 };
 
 /** Popup content for a clicked hexagon */
-const renderPopup = (cell: H3Value) => {
+// django_project/frontend/src/pages/Dashboard/MapLibre/Layers/H3IndicatorLayer/index.tsx
+const renderPopup = (cell: H3Value & { title?: string; date?: string | null; resolution?: number | null }) => {
   const escape = (text: string) =>
     text.replace(/[&<>"']/g, (char) => `&#${char.charCodeAt(0)};`);
+  const value = Number.isFinite(cell.value) ? cell.value.toLocaleString() : String(cell.value);
   return (
+    `<div class="maplibregl-popup-content-main" style="background:#fff;color:#333;padding:8px 12px;border-radius:4px;box-shadow:0 1px 4px rgba(0,0,0,.3);min-width:170px">` +
     `<div class="maplibregl-popup-content-main">` +
-    `<b>H3 ID:</b> ${escape(String(cell.geom_id))}<br/>` +
-    `<b>Value:</b> ${escape(String(cell.value))}` +
-    `</div>`
+    `<div style="font-weight:600;margin-bottom:4px">${escape(cell.title ?? "H3 cell")}</div>` +
+    `<div style="font-size:20px;line-height:1.2">${escape(value)}</div>` +
+    `<div style="color:#666;font-size:11px;margin-top:6px">` +
+    (cell.date ? `as of ${escape(cell.date)} | ` : "") +
+    `resolution ${cell.resolution ?? ""}<br/>` +
+    `<span style="font-family:monospace">${escape(String(cell.geom_id))}</span>` +
+    `</div></div>`
   );
 };
 
@@ -115,6 +122,18 @@ export default function H3IndicatorLayer({
     string | null
   >(null);
   const [loadedValuesKey, setLoadedValuesKey] = useState<string | null>(null);
+
+  // Click handler is created once (effect on [map]); read live values through a ref
+  const popupMeta = useRef<{
+    title?: string;
+    date: string | null;
+    resolution: number | null;
+  }>({ date: null, resolution: null });
+  popupMeta.current = {
+    title: indicatorLayer?.name,
+    date: selectedDate,
+    resolution,
+  };
 
   // Use an overlaid deck.gl instance. Interleaved overlays share the map's
   // deck instance, so removing this overlay would finalize ReferenceLayer's.
@@ -281,8 +300,9 @@ export default function H3IndicatorLayer({
         layerIds: [layerId],
       });
       if (!picked?.object) return;
+      const object = { ...picked.object, ...popupMeta.current };
       setTimeout(() =>
-        addStandalonePopup(map, e.lngLat, renderPopup, picked.object, null),
+        addStandalonePopup(map, e.lngLat, renderPopup, object as any, null),
       );
     };
     map.on("click", onClick);
