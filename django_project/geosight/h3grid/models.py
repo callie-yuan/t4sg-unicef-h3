@@ -22,6 +22,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from geosight.georepo.models.reference_layer import ReferenceLayerView
+from geosight.h3grid.clipping import parse_aoi
+from geosight.h3grid.validation import H3Error
 from geosight.permission.models.manager import PermissionManager
 
 User = get_user_model()
@@ -98,6 +100,11 @@ class H3ReferenceLayerConfig(models.Model):
         null=True,
         blank=True
     )
+    clip_countries = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Country codes picked for the area. Empty for pasted areas.'
+    )
 
     class Meta:  # noqa: D106
         app_label = 'geosight_h3grid'
@@ -113,3 +120,37 @@ class H3ReferenceLayerConfig(models.Model):
             raise ValidationError(
             'Resolutions must satisfy min <= default <= max'
             )
+
+
+class H3ProjectArea(models.Model):
+    """Optional area of a project, used instead of its H3 layer's area.
+
+    It doesn't change the project's reference layer.
+    """
+
+    project = models.OneToOneField(
+        'geosight_data.Dashboard',
+        on_delete=models.CASCADE,
+        related_name='h3_area'
+    )
+    clip_geometry = models.TextField(
+        null=True,
+        blank=True
+    )
+    clip_countries = models.JSONField(
+        default=list,
+        blank=True,
+        help_text='Country codes picked for the area. Empty for pasted areas.'
+    )
+
+    class Meta:  # noqa: D106
+        app_label = 'geosight_h3grid'
+
+    def clean(self):
+        """Ensure the area is a readable Polygon/MultiPolygon."""
+        super().clean()
+        if self.clip_geometry and self.clip_geometry.strip():
+            try:
+                parse_aoi(self.clip_geometry)
+            except H3Error as error:
+                raise ValidationError({'clip_geometry': str(error)})
