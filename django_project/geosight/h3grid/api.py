@@ -10,14 +10,18 @@ Contact : geosight-no-reply@unicef.org
 
 """
 
+import json
+
+import h3
 from django.db.models import OuterRef, Subquery
 from django.http import Http404, HttpResponseBadRequest
 from django.shortcuts import get_object_or_404
 from django.utils.dateparse import parse_date
-from rest_framework.exceptions import PermissionDenied
+from rest_framework.exceptions import ParseError, PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from geosight.data.models.dashboard import Dashboard
 from geosight.data.models.indicator import Indicator, IndicatorValue
 from geosight.h3grid.clipping import cells_in_aoi, parse_aoi
 from geosight.h3grid.models import H3ReferenceLayer
@@ -25,6 +29,8 @@ from geosight.h3grid.models import H3ReferenceLayer
 H3_CELL_REGEX = r'^8[0-9a-f]{14}$'
 H3_MIN_RESOLUTION = 0
 H3_MAX_RESOLUTION = 15
+H3_MAX_AREA_CELLS = 50000
+EQUAL_AREA_SRID = 6933
 
 
 def h3_values(indicator):
@@ -34,21 +40,93 @@ def h3_values(indicator):
     )
 
 
+def estimate_area_cells(aoi, resolution):
+    """Return roughly how many cells of a resolution cover the area."""
+    area_km2 = aoi.transform(EQUAL_AREA_SRID, clone=True).area / 1e6
+    return area_km2 / h3.average_hexagon_area(resolution, 'km^2')
+
+
+def area_cells(aoi, resolution):
+    """Return the cells whose center is inside the area.
+
+    :return: Cell IDs, or None if there are more than H3_MAX_AREA_CELLS.
+    :rtype: list or None
+    """
+    # Refuse huge areas before listing their cells
+    if estimate_area_cells(aoi, resolution) > 2 * H3_MAX_AREA_CELLS:
+        return None
+    cells = h3.h3shape_to_cells(
+        h3.geo_to_h3shape(json.loads(aoi.geojson)), resolution
+    )
+    if len(cells) > H3_MAX_AREA_CELLS:
+        return None
+    return cells
+
+
+def too_many_cells(aoi, resolution):
+    """Return a 400 saying the area is too big for the resolution."""
+    coarser = resolution - 1
+    while coarser > H3_MIN_RESOLUTION and (
+            estimate_area_cells(aoi, coarser) > H3_MAX_AREA_CELLS
+    ):
+        coarser -= 1
+    return HttpResponseBadRequest(
+        f'The area has more than {H3_MAX_AREA_CELLS} cells at resolution '
+        f'{resolution}. Use a coarser resolution, e.g. {max(coarser, 0)}'
+    )
+
+
+def with_empty_cells(values, cells):
+    """Add {geom_id, value: None} for the cells without a value."""
+    have_value = {v['geom_id'] for v in values}
+    return values + [
+        {'geom_id': cell, 'value': None}
+        for cell in sorted(cells) if cell not in have_value
+    ]
+
+
 class _H3IndicatorAPI(APIView):
     """Base H3 indicator API"""
 
-    def get_aoi(self, request):
-        """Return the clip area of ?reference_layer=<identifier>, or None.
-
-        None means no filtering: no parameter, or the layer has no clip.
-        """
-        identifier = request.GET.get('reference_layer')
-        if not identifier:
+    def get_project(self, request):
+        """Return the project of ?project=<id>, or None."""
+        project_id = request.GET.get('project')
+        if not project_id:
             return None
-        layer = H3ReferenceLayer.objects.filter(identifier=identifier).first()
-        if layer is None:
-            raise Http404('H3 reference layer not found')
-        config = getattr(layer, 'h3_config', None)
+        if not project_id.isdigit():
+            raise ParseError('project must be an integer id')
+        project = get_object_or_404(Dashboard, pk=project_id)
+        readable = Dashboard.permissions.read(request.user)
+        if not readable.filter(pk=project.pk).exists():
+            raise PermissionDenied(
+                'You do not have permission to access this project'
+            )
+        return project
+
+    def get_aoi(self, request):
+        """Return the area that applies to the request, or None.
+
+        The project's area (?project=<id>) comes first. Otherwise the
+        clip of the layer (?reference_layer=<identifier>, or else the
+        project's reference layer). None means no filtering.
+        """
+        project = self.get_project(request)
+        area = getattr(project, 'h3_area', None) if project else None
+        if area and area.clip_geometry and area.clip_geometry.strip():
+            return parse_aoi(area.clip_geometry)
+
+        identifier = request.GET.get('reference_layer')
+        if identifier:
+            layer = H3ReferenceLayer.objects.filter(
+                identifier=identifier
+            ).first()
+            if layer is None:
+                raise Http404('H3 reference layer not found')
+        elif project:
+            layer = project.reference_layer
+        else:
+            return None
+        config = getattr(layer, 'h3_config', None) if layer else None
         text = config.clip_geometry if config else None
         if not text or not text.strip():
             return None
@@ -104,6 +182,13 @@ class H3IndicatorValuesAPI(_H3IndicatorAPI):
                 f'resolution must be an integer between '
                 f'{H3_MIN_RESOLUTION} and {H3_MAX_RESOLUTION}'
             )
+        # Cells of the area without a value, only when asked for
+        cells = []
+        include_empty = request.GET.get('include_empty', '').lower()
+        if include_empty in ('true', '1') and aoi is not None:
+            cells = area_cells(aoi, resolution)
+            if cells is None:
+                return too_many_cells(aoi, resolution)
         query = h3_values(indicator).filter(admin_level=resolution)
 
         date = request.GET.get('date')
@@ -122,10 +207,10 @@ class H3IndicatorValuesAPI(_H3IndicatorAPI):
                 query.order_by('-date').values_list('date', flat=True).first()
             )
             if date is None:
-                return Response([])
+                return Response(with_empty_cells([], cells))
             values = query.filter(date=date)
         values = list(query.filter(date=date).values('geom_id', 'value'))
         if aoi is not None:
             kept = set(cells_in_aoi([v['geom_id'] for v in values], aoi))
             values = [v for v in values if v['geom_id'] in kept]
-        return Response(values)
+        return Response(with_empty_cells(values, cells))
