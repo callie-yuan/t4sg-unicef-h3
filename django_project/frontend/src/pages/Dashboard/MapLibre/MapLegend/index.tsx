@@ -162,7 +162,13 @@ const RenderIndicatorLegendSection = ({
 /**
  * Render indicator legend
  */
-const RenderIndicatorLegend = ({ layer }: { layer: IndicatorLayer }) => {
+const RenderIndicatorLegend = ({
+  layer,
+  h3Rules,
+}: {
+  layer: IndicatorLayer;
+  h3Rules?: any[] | null;
+}) => {
   const referenceLayer = useSelector(
     // @ts-ignore
     (state) => state.dashboard.data?.referenceLayer,
@@ -183,6 +189,19 @@ const RenderIndicatorLegend = ({ layer }: { layer: IndicatorLayer }) => {
   const filteredGeometries = useSelector((state) => state.filteredGeometries);
   // @ts-ignore
   const indicatorLayersData = useSelector((state) => state.indicatorLayersData);
+
+  // H3 layers build their rules from the H3 values on screen
+  if (h3Rules !== undefined) {
+    return (
+      <div className="MapLegendSection">
+        <RenderIndicatorLegendSection
+          rules={h3Rules}
+          layer={layer}
+          name={null}
+        />
+      </div>
+    );
+  }
 
   if (layer.multi_indicator_mode === "Pin") {
     return (
@@ -268,10 +287,12 @@ const RenderIndicatorLegend = ({ layer }: { layer: IndicatorLayer }) => {
 export interface Props {
   firstLayer: IndicatorLayer;
   secondLayer: IndicatorLayer;
+  /** Legend rules of the H3 layer drawing firstLayer; undefined if not H3 */
+  h3Rules?: any[] | null;
 }
 
 /** Map Legend. */
-export default function MapLegend({ firstLayer, secondLayer }: Props) {
+export default function MapLegend({ firstLayer, secondLayer, h3Rules }: Props) {
   // @ts-ignore
   const indicatorShow = useSelector((state) => state.map?.indicatorShow);
 
@@ -280,7 +301,7 @@ export default function MapLegend({ firstLayer, secondLayer }: Props) {
       <div className="MapLegend">
         <div className="MapLegendContent Fullscreen">
           {firstLayer?.id && indicatorShow && (
-            <RenderIndicatorLegend layer={firstLayer} />
+            <RenderIndicatorLegend layer={firstLayer} h3Rules={h3Rules} />
           )}
           {secondLayer?.id && indicatorShow && (
             <div style={{ position: "relative" }}>

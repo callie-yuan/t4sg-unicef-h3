@@ -407,6 +407,7 @@ export default function MainMapLibre({
   );
   const isH3 = isH3ReferenceLayer(referenceLayer);
   useReferenceLayerCleanup(map, deckgl, isH3);
+  const [h3LegendRules, setH3LegendRules] = useState<any[] | null>(null);
 
   // Indicator layers
   const firstLayer = useSelector(selectIndicatorLayerByIdx(0));
@@ -441,6 +442,7 @@ export default function MainMapLibre({
         <MapLegend
           firstLayer={indicatorLayers[0]}
           secondLayer={indicatorLayers[1]}
+          h3Rules={isH3 ? h3LegendRules : undefined}
         />
       </div>
       <ContextLayers map={map} />
@@ -450,6 +452,7 @@ export default function MainMapLibre({
           map={map}
           indicatorLayer={indicatorLayers[0]}
           referenceLayer={referenceLayer}
+          onLegendRules={setH3LegendRules}
         />
       ) : (
         <ReferenceLayers
@@ -488,6 +491,7 @@ export function MirrorMapLibre({ id }: { id: number }) {
   );
   const isH3 = isH3ReferenceLayer(referenceLayer);
   useReferenceLayerCleanup(map, deckgl, isH3);
+  const [h3LegendRules, setH3LegendRules] = useState<any[] | null>(null);
 
   // In compare mode, MainMap renders both layers — mirror not needed
   // In non-compare mode, mirror renders the layer at this map's index
@@ -504,7 +508,11 @@ export function MirrorMapLibre({ id }: { id: number }) {
       >
         <MapSwitcher idx={id} />
         <div key={container} id={container} className="Maplibre"></div>
-        <MapLegend firstLayer={mirrorLayer} secondLayer={null} />
+        <MapLegend
+          firstLayer={mirrorLayer}
+          secondLayer={null}
+          h3Rules={isH3 ? h3LegendRules : undefined}
+        />
       </div>
       <ContextLayers map={map} />
       {isH3 ? (
@@ -513,6 +521,7 @@ export function MirrorMapLibre({ id }: { id: number }) {
           map={map}
           indicatorLayer={mirrorLayer}
           referenceLayer={referenceLayer}
+          onLegendRules={setH3LegendRules}
         />
       ) : (
         <ReferenceLayers

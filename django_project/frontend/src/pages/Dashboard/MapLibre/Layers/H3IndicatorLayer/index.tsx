@@ -27,10 +27,13 @@ import { H3HexagonLayer } from "@deck.gl/geo-layers/typed";
 import axiosRequest from "../../../../../utils/Request";
 import { UpdateStyleData } from "../../../../../utils/indicatorData";
 import {
+  createDynamicStyle,
+  dynamicStyleTypes,
   returnLayerStyleConfig,
   returnNoDataStyle,
 } from "../../../../../utils/Style";
 import { hexToRGBList } from "../../../../../utils/main";
+import { NO_DATA_RULE } from "../../../../Admin/Style/Form/StyleRules";
 import { addStandalonePopup } from "../../utils";
 import { IndicatorLayer } from "../../../../../types/IndicatorLayer";
 import type { RootState } from "../../../../../store/dashboard/reducers";
@@ -39,24 +42,50 @@ import { mockResolutions, mockSize, mockValues } from "./mock";
 /** One row of GET /api/v1/indicators/<id>/h3/values/ */
 export interface H3Value {
   geom_id: string;
-  value: number;
+  // null for a cell of the area without a value (include_empty)
+  value: number | null;
 }
 
 interface StyledH3Value extends H3Value {
   color: number[];
 }
 
+const hasValue = (row: H3Value) =>
+  row.value !== null && row.value !== undefined;
+
+/** Query of the area filters: the project and the reference layer */
+const areaQuery = (referenceLayerId: string, projectId: number | null) =>
+  `reference_layer=${encodeURIComponent(referenceLayerId)}` +
+  (projectId ? `&project=${projectId}` : "");
+
 const H3Urls = {
-  resolutions: (indicatorId: number, referenceLayerId: string) =>
-    `/api/v1/indicators/${indicatorId}/h3/resolutions/?reference_layer=${encodeURIComponent(referenceLayerId)}`,
+  resolutions: (
+    indicatorId: number,
+    referenceLayerId: string,
+    projectId: number | null,
+  ) =>
+    `/api/v1/indicators/${indicatorId}/h3/resolutions/?` +
+    areaQuery(referenceLayerId, projectId),
   values: (
     indicatorId: number,
     resolution: number,
     referenceLayerId: string,
+    projectId: number | null,
     date: string | null,
+    includeEmpty: boolean,
   ) =>
-    `/api/v1/indicators/${indicatorId}/h3/values/?resolution=${resolution}&reference_layer=${encodeURIComponent(referenceLayerId)}` +
-    (date ? `&date=${encodeURIComponent(date)}` : ""),
+    `/api/v1/indicators/${indicatorId}/h3/values/?resolution=${resolution}&` +
+    areaQuery(referenceLayerId, projectId) +
+    (date ? `&date=${encodeURIComponent(date)}` : "") +
+    (includeEmpty ? "&include_empty=true" : ""),
+};
+
+/** Log a failed request with the server's message */
+const logRequestError = (what: string, error: any) => {
+  console.error(
+    `H3 layer: ${what} request failed`,
+    error?.response?.data ?? error?.message ?? error,
+  );
 };
 
 /** Popup content for a clicked hexagon */
@@ -66,9 +95,32 @@ const renderPopup = (cell: H3Value) => {
   return (
     `<div class="maplibregl-popup-content-main">` +
     `<b>H3 ID:</b> ${escape(String(cell.geom_id))}<br/>` +
-    `<b>Value:</b> ${escape(String(cell.value))}` +
+    `<b>Value:</b> ${hasValue(cell) ? escape(String(cell.value)) : "No data"}` +
     `</div>`
   );
+};
+
+/**
+ * Legend rules of the H3 layer, built like GeoSight's indicatorLayerStyle:
+ * the classes of the resolution on screen, then the no-data rule.
+ */
+const h3LegendRules = (config: any, rows: any[], resolution: number | null) => {
+  let style = config.style;
+  if (dynamicStyleTypes.includes(config.style_type)) {
+    // Classes are keyed by admin level, which is the resolution for H3
+    const dynamic = createDynamicStyle(
+      rows,
+      config.style_type,
+      config.style_config,
+      config.style_data,
+    ) as unknown as Record<string, any[]>;
+    const classes = (dynamic[String(resolution)] ?? []).filter(
+      (rule: any) => rule.name !== NO_DATA_RULE,
+    );
+    classes.reverse();
+    style = [...classes, ...dynamic["NoData"]];
+  }
+  return (style ?? []).filter((rule: any) => rule.active);
 };
 
 export interface H3ReferenceLayer {
@@ -86,6 +138,8 @@ export interface Props {
   map: maplibregl.Map;
   indicatorLayer: IndicatorLayer;
   referenceLayer?: H3ReferenceLayer;
+  /** Receives the legend rules; null while loading */
+  onLegendRules?: (rules: any[] | null) => void;
 }
 
 export default function H3IndicatorLayer({
@@ -93,9 +147,12 @@ export default function H3IndicatorLayer({
   map,
   indicatorLayer,
   referenceLayer,
+  onLegendRules,
 }: Props) {
   // @ts-ignore
   const indicators = useSelector((state) => state.dashboard.data?.indicators);
+  // @ts-ignore
+  const projectId = useSelector((state) => state.dashboard.data?.id) ?? null;
   // @ts-ignore
   const indicatorShow = useSelector((state) => state.map?.indicatorShow);
   const transparency = useSelector(
@@ -135,6 +192,7 @@ export default function H3IndicatorLayer({
   const resolutionsKey = JSON.stringify([
     indicatorId,
     referenceLayerId,
+    projectId,
     defaultResolution,
     minResolution,
     maxResolution,
@@ -143,6 +201,7 @@ export default function H3IndicatorLayer({
     indicatorId,
     resolution,
     referenceLayerId,
+    projectId,
     selectedDate,
   ]);
 
@@ -185,7 +244,7 @@ export default function H3IndicatorLayer({
     }
     let cancelled = false;
     axiosRequest
-      .get(H3Urls.resolutions(indicatorId, referenceLayerId))
+      .get(H3Urls.resolutions(indicatorId, referenceLayerId, projectId))
       .then((response) => {
         if (cancelled) return;
         const fetched = configuredResolutions(response.data ?? []);
@@ -193,13 +252,16 @@ export default function H3IndicatorLayer({
         setResolution(initialResolution(fetched));
         setLoadedResolutionsKey(resolutionsKey);
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (!cancelled) logRequestError("resolutions", error);
+      });
     return () => {
       cancelled = true;
     };
   }, [
     indicatorId,
     referenceLayerId,
+    projectId,
     defaultResolution,
     minResolution,
     maxResolution,
@@ -218,20 +280,38 @@ export default function H3IndicatorLayer({
       return;
     }
     let cancelled = false;
-    axiosRequest
-      .get(
-        H3Urls.values(indicatorId, resolution, referenceLayerId, selectedDate),
-      )
+    const request = (includeEmpty: boolean) =>
+      axiosRequest.get(
+        H3Urls.values(
+          indicatorId,
+          resolution,
+          referenceLayerId,
+          projectId,
+          selectedDate,
+          includeEmpty,
+        ),
+      );
+    // Ask for the empty cells of the area too. The API refuses that when
+    // the area has too many cells at this resolution, so then draw only the
+    // cells with values.
+    request(true)
+      .catch((error) => {
+        if (cancelled || error?.response?.status !== 400) throw error;
+        logRequestError("empty cells", error);
+        return request(false);
+      })
       .then((response) => {
         if (cancelled) return;
         setValues(response.data ?? []);
         setLoadedValuesKey(valuesKey);
       })
-      .catch(() => {});
+      .catch((error) => {
+        if (!cancelled) logRequestError("values", error);
+      });
     return () => {
       cancelled = true;
     };
-  }, [indicatorId, resolution, referenceLayerId, selectedDate]);
+  }, [indicatorId, resolution, referenceLayerId, projectId, selectedDate]);
 
   /** Color each cell with the indicator's style rules */
   const styledValues: StyledH3Value[] = useMemo(() => {
@@ -241,11 +321,15 @@ export default function H3IndicatorLayer({
     const config = returnLayerStyleConfig(indicatorLayer, indicators ?? []);
     const noDataStyle = returnNoDataStyle(indicatorLayer, indicators ?? []);
     // Dynamic styles are grouped by admin level; use the resolution for it.
+    // Empty cells skip the rules (null would match "x>=0") and get no-data.
     const rows = UpdateStyleData(
-      values.map((row) => ({ ...row, admin_level: resolution })),
+      values
+        .filter(hasValue)
+        .map((row) => ({ ...row, admin_level: resolution })),
       config,
     );
-    return rows
+    const emptyRows = values.filter((row) => !hasValue(row));
+    return [...emptyRows, ...rows]
       .map((row: any) => {
         const color = row.style?.color ?? noDataStyle?.color;
         if (!color) return null;
@@ -257,6 +341,37 @@ export default function H3IndicatorLayer({
       })
       .filter(Boolean);
   }, [values, indicatorLayer, indicators, resolution]);
+
+  const noResolutions =
+    loadedResolutionsKey === resolutionsKey && resolutions.length === 0;
+  const valuesLoaded = loadedValuesKey === valuesKey;
+
+  /** Legend: the classes of the resolution and date on screen */
+  const legendRules = useMemo(() => {
+    if (!noResolutions && !valuesLoaded) {
+      return null;
+    }
+    const config = returnLayerStyleConfig(indicatorLayer, indicators ?? []);
+    const rows = noResolutions
+      ? []
+      : values
+          .filter(hasValue)
+          .map((row) => ({ ...row, admin_level: resolution }));
+    return h3LegendRules(config, rows, resolution);
+  }, [
+    noResolutions,
+    valuesLoaded,
+    values,
+    indicatorLayer,
+    indicators,
+    resolution,
+  ]);
+
+  useEffect(() => {
+    onLegendRules?.(legendRules);
+  }, [legendRules]);
+
+  useEffect(() => () => onLegendRules?.(null), []);
 
   /** Create the overlay */
   useEffect(() => {
@@ -287,10 +402,20 @@ export default function H3IndicatorLayer({
     };
     map.on("click", onClick);
     return () => {
-      map.off("click", onClick);
-      deckgl.onRemove();
-      container.remove();
       overlay.current = null;
+      // The map may already be removed (e.g. leaving the page), so each step
+      // must not stop the others.
+      try {
+        map.off("click", onClick);
+      } catch (error) {
+        console.warn("H3 layer: could not remove the click handler", error);
+      }
+      try {
+        deckgl.onRemove();
+      } catch (error) {
+        console.warn("H3 layer: could not remove the overlay", error);
+      }
+      container.remove();
     };
   }, [map]);
 
@@ -326,9 +451,8 @@ export default function H3IndicatorLayer({
   if (!wrapper || !indicatorShow) {
     return null;
   }
-  const noH3Data =
-    (loadedResolutionsKey === resolutionsKey && resolutions.length === 0) ||
-    (loadedValuesKey === valuesKey && values.length === 0);
+  // Empty cells alone (include_empty) still mean there is no data
+  const noH3Data = noResolutions || (valuesLoaded && !values.some(hasValue));
   if (!noH3Data && resolutions.length < 2) {
     return null;
   }
