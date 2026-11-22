@@ -36,6 +36,7 @@ import './style.scss';
 
 
 export function resourceActions(params, noShare = false) {
+  if (params.row.is_h3) return [];
   const permission = params.row.permission
   const actions = []
 
@@ -140,12 +141,18 @@ export default function ReferenceLayerViewList() {
   nameColumn.renderCell = (params) => {
     const permission = params.row.permission
     if (!permission || permission.edit) {
-      const editUrl = urls.api.edit.replace('/' + DEFAULT_UUID, `/${params.id}`);
+      const editUrl = params.row.is_h3
+        ? urls.api.h3Edit.replace(DEFAULT_UUID, params.id)
+        : urls.api.edit.replace('/' + DEFAULT_UUID, `/${params.id}`);
       return <a className='MuiButtonLike CellLink' href={editUrl}>
         {params.value}
+        {params.row.is_h3 && <span className='H3IndexLabel'>index: H3</span>}
       </a>
     } else {
-      return <div className='MuiDataGrid-cellContent'>{params.value}</div>
+      return <div className='MuiDataGrid-cellContent'>
+        {params.value}
+        {params.row.is_h3 && <span className='H3IndexLabel'>index: H3</span>}
+      </div>
     }
   }
   const cleanColumns = [
@@ -164,7 +171,8 @@ export default function ReferenceLayerViewList() {
   return <AdminList
     columns={cleanColumns}
     pageName={pageName}
-    listUrl={urls.api.list + '?fields=uuid,bbox,vector_tiles,possible_id_types,dataset_levels,tags,permission,version_data,created_at,modified_at,identifier,name,description,in_georepo,modified_by'}
+    listUrl={urls.api.list + '?include_h3=true&fields=uuid,bbox,vector_tiles,possible_id_types,dataset_levels,tags,permission,version_data,created_at,modified_at,identifier,name,description,in_georepo,is_h3,modified_by'}
+    rightHeader={user.is_creator && <a className='MuiButtonLike' href={urls.api.h3Create}>Create H3 layer</a>}
     getRowId={(row) => row.identifier}
   />
 }

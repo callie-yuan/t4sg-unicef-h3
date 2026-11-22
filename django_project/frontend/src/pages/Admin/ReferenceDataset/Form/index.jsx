@@ -25,6 +25,7 @@ import { AdminForm } from '../../Components/AdminForm'
 import DjangoTemplateForm from "../../Components/AdminForm/DjangoTemplateForm";
 import { resourceActions } from "../List";
 import { DeleteIcon } from "../../../../components/Icons";
+import H3Form from './H3Form';
 
 import '../style.scss';
 import './style.scss';
@@ -38,6 +39,7 @@ export default function ReferenceLayerViewForm() {
   const [submitted, setSubmitted] = useState(false);
   const selectableInput = batch !== null
   const [levels, setLevels] = useState(dataLevels)
+  if (isH3) return <H3Form />;
   return (
     <Admin
       minifySideNavigation={true}

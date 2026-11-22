@@ -37,6 +37,7 @@ from geosight.reference_dataset.view.frontend.importer_list import (
 from geosight.reference_dataset.view.frontend.list import (
     ReferenceLayerViewListView
 )
+from geosight.reference_dataset.view.frontend.h3_form import H3LayerFormView
 
 admin_detail_url = [
     url(
@@ -61,6 +62,14 @@ admin_detail_url = [
     ),
 ]
 urlpatterns = [
+    url(
+        r'^h3/create/$', H3LayerFormView.as_view(),
+        name='admin-h3-layer-create-view'
+    ),
+    url(
+        r'^h3/(?P<identifier>[0-9a-fA-F-]{36})/edit/$',
+        H3LayerFormView.as_view(), name='admin-h3-layer-edit-view'
+    ),
     url(r'^(?P<identifier>[^/]+)/', include(admin_detail_url)),
     url(
         r'^importer',
