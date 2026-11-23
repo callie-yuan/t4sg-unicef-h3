@@ -16,11 +16,14 @@
    H3 INDICATOR LAYER
    Draws an indicator's H3 values as hexagons, straight from the H3 cell IDs.
    Mounted for H3 projects; draws hexagons when the indicator has H3 values.
+   The resolution follows the zoom in Auto mode (see zoomResolution.tsx), and
+   only the hexagons around the view are requested. What is on screen is
+   shared in the dashboard store (h3Map), for widgets and others.
    ========================================================================== */
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import maplibregl from "maplibre-gl";
 import { MapboxOverlay } from "@deck.gl/mapbox/typed";
 import { H3HexagonLayer } from "@deck.gl/geo-layers/typed";
@@ -37,7 +40,20 @@ import { NO_DATA_RULE } from "../../../../Admin/Style/Form/StyleRules";
 import { addStandalonePopup } from "../../utils";
 import { IndicatorLayer } from "../../../../../types/IndicatorLayer";
 import type { RootState } from "../../../../../store/dashboard/reducers";
+import H3MapActions from "../../../../../store/dashboard/reducers/h3Map/actions";
+import {
+  H3Bbox,
+  selectH3Map,
+} from "../../../../../store/dashboard/reducers/h3Map";
 import { mockResolutions, mockSize, mockValues } from "./mock";
+import { autoResolution, bboxContains, padBbox } from "./zoomResolution";
+
+// Wait this long after the map stops moving before switching resolution
+const SETTLE_MS = 300;
+// Request this share of the view's size more on each side, so small pans
+// don't need a new request
+const VIEW_PADDING = 0.25;
+const WORLD_BBOX: H3Bbox = [-180, -85, 180, 85];
 
 /** One row of GET /api/v1/indicators/<id>/h3/values/ */
 export interface H3Value {
@@ -73,11 +89,13 @@ const H3Urls = {
     projectId: number | null,
     date: string | null,
     includeEmpty: boolean,
+    bbox: H3Bbox,
   ) =>
     `/api/v1/indicators/${indicatorId}/h3/values/?resolution=${resolution}&` +
     areaQuery(referenceLayerId, projectId) +
     (date ? `&date=${encodeURIComponent(date)}` : "") +
-    (includeEmpty ? "&include_empty=true" : ""),
+    (includeEmpty ? "&include_empty=true" : "") +
+    `&bbox=${bbox.map((part) => part.toFixed(5)).join(",")}`,
 };
 
 /** Log a failed request with the server's message */
@@ -149,6 +167,7 @@ export default function H3IndicatorLayer({
   referenceLayer,
   onLegendRules,
 }: Props) {
+  const dispatch = useDispatch();
   // @ts-ignore
   const indicators = useSelector((state) => state.dashboard.data?.indicators);
   // @ts-ignore
@@ -165,13 +184,35 @@ export default function H3IndicatorLayer({
       : null,
   );
 
-  const [resolutions, setResolutions] = useState<number[]>([]);
-  const [resolution, setResolution] = useState<number | null>(null);
-  const [values, setValues] = useState<H3Value[]>([]);
+  // Shared H3 state of this map (store: h3Map)
+  const h3Map = useSelector(selectH3Map(mapId));
+  const mode = h3Map?.mode ?? "auto";
+  const selectedResolution = h3Map?.selectedResolution ?? null;
+  const resolutions = h3Map?.resolutions ?? [];
+  const zoom = h3Map?.zoom ?? null;
+  const viewBbox = h3Map?.bbox ?? null;
+  const viewLatitude = viewBbox ? (viewBbox[1] + viewBbox[3]) / 2 : 0;
+  const updateH3Map = (payload: Parameters<typeof H3MapActions.update>[1]) =>
+    dispatch(H3MapActions.update(mapId, payload));
+
   const [loadedResolutionsKey, setLoadedResolutionsKey] = useState<
     string | null
   >(null);
-  const [loadedValuesKey, setLoadedValuesKey] = useState<string | null>(null);
+  // Hexagons on screen, kept until the next ones arrive
+  const [loaded, setLoaded] = useState<{
+    key: string;
+    resolution: number;
+    values: H3Value[];
+    bbox: H3Bbox;
+  } | null>(null);
+  const loadedRef = useRef(loaded);
+  loadedRef.current = loaded;
+  // Request in flight, so a pan inside its box doesn't restart it
+  const pendingRef = useRef<{
+    key: string;
+    bbox: H3Bbox;
+    cancelled: boolean;
+  } | null>(null);
 
   // Use an overlaid deck.gl instance. Interleaved overlays share the map's
   // deck instance, so removing this overlay would finalize ReferenceLayer's.
@@ -197,13 +238,22 @@ export default function H3IndicatorLayer({
     minResolution,
     maxResolution,
   ]);
+  // In Auto mode, take the resolution straight from the view, so a new view
+  // is requested with its own resolution, never with the previous one
+  const wantedResolution =
+    mode === "auto" && zoom !== null && resolutions.length
+      ? autoResolution(resolutions, zoom, viewLatitude)
+      : selectedResolution;
+  // Everything a request depends on except the box
   const valuesKey = JSON.stringify([
     indicatorId,
-    resolution,
+    wantedResolution,
     referenceLayerId,
     projectId,
     selectedDate,
   ]);
+  const shownResolution = loaded?.resolution ?? null;
+  const shownValues = loaded?.values ?? [];
 
   const configuredResolutions = (available: number[]): number[] =>
     available
@@ -227,30 +277,49 @@ export default function H3IndicatorLayer({
           null,
         );
 
+  /** Resolution to show from the available ones, for the current mode */
+  const pickResolution = (available: number[]): number | null => {
+    if (mode === "auto" && zoom !== null) {
+      return autoResolution(available, zoom, viewLatitude);
+    }
+    if (
+      mode === "manual" &&
+      selectedResolution !== null &&
+      available.includes(selectedResolution)
+    ) {
+      return selectedResolution;
+    }
+    return initialResolution(available);
+  };
+
   /** Fetch the resolutions that have H3 values */
   useEffect(() => {
-    setResolutions([]);
-    setResolution(null);
+    updateH3Map({
+      indicatorId,
+      resolutions: [],
+      selectedResolution: null,
+    });
     if (!indicatorId || !referenceLayerId) {
       return;
     }
+    const loadResolutions = (available: number[]) => {
+      const fetched = configuredResolutions(available);
+      updateH3Map({
+        resolutions: fetched,
+        selectedResolution: pickResolution(fetched),
+      });
+      setLoadedResolutionsKey(resolutionsKey);
+    };
     const mock = mockSize();
     if (mock) {
-      const mocked = configuredResolutions(mockResolutions(mock));
-      setResolutions(mocked);
-      setResolution(initialResolution(mocked));
-      setLoadedResolutionsKey(resolutionsKey);
+      loadResolutions(mockResolutions(mock));
       return;
     }
     let cancelled = false;
     axiosRequest
       .get(H3Urls.resolutions(indicatorId, referenceLayerId, projectId))
       .then((response) => {
-        if (cancelled) return;
-        const fetched = configuredResolutions(response.data ?? []);
-        setResolutions(fetched);
-        setResolution(initialResolution(fetched));
-        setLoadedResolutionsKey(resolutionsKey);
+        if (!cancelled) loadResolutions(response.data ?? []);
       })
       .catch((error) => {
         if (!cancelled) logRequestError("resolutions", error);
@@ -267,19 +336,61 @@ export default function H3IndicatorLayer({
     maxResolution,
   ]);
 
-  /** Fetch the values of the selected resolution */
+  /** Auto mode: pick the resolution from the zoom, once the map settles */
   useEffect(() => {
-    setValues([]);
-    if (!indicatorId || !referenceLayerId || resolution === null) {
+    if (mode !== "auto" || !resolutions.length || zoom === null) {
+      return;
+    }
+    const next = autoResolution(resolutions, zoom, viewLatitude);
+    if (next !== selectedResolution) {
+      updateH3Map({ selectedResolution: next });
+    }
+  }, [mode, zoom, viewLatitude, resolutions]);
+
+  /**
+   * Fetch the values of the selected resolution around the view.
+   * Nothing is requested when the hexagons on screen (or on their way)
+   * already have this resolution and date and cover the view.
+   */
+  useEffect(() => {
+    if (!indicatorId || !referenceLayerId || wantedResolution === null) {
+      if (pendingRef.current) pendingRef.current.cancelled = true;
+      pendingRef.current = null;
+      setLoaded(null);
+      return;
+    }
+    const covers = (request: { key: string; bbox: H3Bbox } | null) =>
+      request?.key === valuesKey &&
+      (!viewBbox || bboxContains(request.bbox, viewBbox));
+    if (covers(pendingRef.current)) {
+      return;
+    }
+    if (pendingRef.current) pendingRef.current.cancelled = true;
+    pendingRef.current = null;
+    if (covers(loadedRef.current)) {
       return;
     }
     const mock = mockSize();
     if (mock) {
-      setValues(mockValues(mock, resolution));
-      setLoadedValuesKey(valuesKey);
+      setLoaded({
+        key: valuesKey,
+        resolution: wantedResolution,
+        values: mockValues(mock, wantedResolution),
+        bbox: WORLD_BBOX,
+      });
       return;
     }
-    let cancelled = false;
+    // Wait for the map to report what it shows
+    if (!viewBbox) {
+      return;
+    }
+    const pending = {
+      key: valuesKey,
+      bbox: padBbox(viewBbox, VIEW_PADDING),
+      cancelled: false,
+    };
+    pendingRef.current = pending;
+    const resolution = wantedResolution;
     const request = (includeEmpty: boolean) =>
       axiosRequest.get(
         H3Urls.values(
@@ -289,6 +400,7 @@ export default function H3IndicatorLayer({
           projectId,
           selectedDate,
           includeEmpty,
+          pending.bbox,
         ),
       );
     // Ask for the empty cells of the area too. The API refuses that when
@@ -296,26 +408,51 @@ export default function H3IndicatorLayer({
     // cells with values.
     request(true)
       .catch((error) => {
-        if (cancelled || error?.response?.status !== 400) throw error;
+        if (pending.cancelled || error?.response?.status !== 400) throw error;
         logRequestError("empty cells", error);
         return request(false);
       })
       .then((response) => {
-        if (cancelled) return;
-        setValues(response.data ?? []);
-        setLoadedValuesKey(valuesKey);
+        if (pending.cancelled) return;
+        pendingRef.current = null;
+        setLoaded({
+          key: pending.key,
+          resolution,
+          values: response.data ?? [],
+          bbox: pending.bbox,
+        });
       })
       .catch((error) => {
-        if (!cancelled) logRequestError("values", error);
+        if (pending.cancelled) return;
+        pendingRef.current = null;
+        logRequestError("values", error);
       });
-    return () => {
-      cancelled = true;
-    };
-  }, [indicatorId, resolution, referenceLayerId, projectId, selectedDate]);
+  }, [
+    indicatorId,
+    wantedResolution,
+    referenceLayerId,
+    projectId,
+    selectedDate,
+    viewBbox,
+  ]);
+
+  /** Share the resolution on screen */
+  useEffect(() => {
+    updateH3Map({ resolution: shownResolution });
+  }, [shownResolution]);
+
+  /** Forget this map's H3 state when the layer goes away */
+  useEffect(
+    () => () => {
+      if (pendingRef.current) pendingRef.current.cancelled = true;
+      dispatch(H3MapActions.remove(mapId));
+    },
+    [],
+  );
 
   /** Color each cell with the indicator's style rules */
   const styledValues: StyledH3Value[] = useMemo(() => {
-    if (!values.length) {
+    if (!shownValues.length) {
       return [];
     }
     const config = returnLayerStyleConfig(indicatorLayer, indicators ?? []);
@@ -323,12 +460,12 @@ export default function H3IndicatorLayer({
     // Dynamic styles are grouped by admin level; use the resolution for it.
     // Empty cells skip the rules (null would match "x>=0") and get no-data.
     const rows = UpdateStyleData(
-      values
+      shownValues
         .filter(hasValue)
-        .map((row) => ({ ...row, admin_level: resolution })),
+        .map((row) => ({ ...row, admin_level: shownResolution })),
       config,
     );
-    const emptyRows = values.filter((row) => !hasValue(row));
+    const emptyRows = shownValues.filter((row) => !hasValue(row));
     return [...emptyRows, ...rows]
       .map((row: any) => {
         const color = row.style?.color ?? noDataStyle?.color;
@@ -340,31 +477,31 @@ export default function H3IndicatorLayer({
         };
       })
       .filter(Boolean);
-  }, [values, indicatorLayer, indicators, resolution]);
+  }, [shownValues, indicatorLayer, indicators, shownResolution]);
 
   const noResolutions =
     loadedResolutionsKey === resolutionsKey && resolutions.length === 0;
-  const valuesLoaded = loadedValuesKey === valuesKey;
+  const valuesLoaded = loaded?.key === valuesKey;
 
-  /** Legend: the classes of the resolution and date on screen */
+  /** Legend: the classes of the hexagons on screen */
   const legendRules = useMemo(() => {
-    if (!noResolutions && !valuesLoaded) {
+    if (!noResolutions && !loaded) {
       return null;
     }
     const config = returnLayerStyleConfig(indicatorLayer, indicators ?? []);
     const rows = noResolutions
       ? []
-      : values
+      : shownValues
           .filter(hasValue)
-          .map((row) => ({ ...row, admin_level: resolution }));
-    return h3LegendRules(config, rows, resolution);
+          .map((row) => ({ ...row, admin_level: shownResolution }));
+    return h3LegendRules(config, rows, shownResolution);
   }, [
     noResolutions,
-    valuesLoaded,
-    values,
+    loaded,
+    shownValues,
     indicatorLayer,
     indicators,
-    resolution,
+    shownResolution,
   ]);
 
   useEffect(() => {
@@ -373,7 +510,7 @@ export default function H3IndicatorLayer({
 
   useEffect(() => () => onLegendRules?.(null), []);
 
-  /** Create the overlay */
+  /** Create the overlay, and report the view once the map settles */
   useEffect(() => {
     if (!map) {
       return;
@@ -401,14 +538,45 @@ export default function H3IndicatorLayer({
       );
     };
     map.on("click", onClick);
+
+    const reportView = () => {
+      const bounds = map.getBounds();
+      updateH3Map({
+        zoom: map.getZoom(),
+        bbox: padBbox(
+          [
+            bounds.getWest(),
+            bounds.getSouth(),
+            bounds.getEast(),
+            bounds.getNorth(),
+          ],
+          0,
+        ),
+      });
+    };
+    let settleTimer: ReturnType<typeof setTimeout> | undefined;
+    const onMoveEnd = () => {
+      clearTimeout(settleTimer);
+      settleTimer = setTimeout(reportView, SETTLE_MS);
+    };
+    // A new move cancels a pending report, so only settled views count
+    const onMoveStart = () => clearTimeout(settleTimer);
+    map.on("moveend", onMoveEnd);
+    map.on("movestart", onMoveStart);
+    // First report also waits, as the project may still fly to its extent
+    onMoveEnd();
+
     return () => {
       overlay.current = null;
+      clearTimeout(settleTimer);
       // The map may already be removed (e.g. leaving the page), so each step
       // must not stop the others.
       try {
         map.off("click", onClick);
+        map.off("moveend", onMoveEnd);
+        map.off("movestart", onMoveStart);
       } catch (error) {
-        console.warn("H3 layer: could not remove the click handler", error);
+        console.warn("H3 layer: could not remove the map handlers", error);
       }
       try {
         deckgl.onRemove();
@@ -452,13 +620,18 @@ export default function H3IndicatorLayer({
     return null;
   }
   // Empty cells alone (include_empty) still mean there is no data
-  const noH3Data = noResolutions || (valuesLoaded && !values.some(hasValue));
-  if (!noH3Data && resolutions.length < 2) {
+  const noDataInView = valuesLoaded && !shownValues.some(hasValue);
+  const noDataMessage = noResolutions
+    ? "No H3 data for this indicator"
+    : noDataInView
+      ? "No H3 data in this view"
+      : null;
+  if (!noDataMessage && resolutions.length < 2) {
     return null;
   }
   return createPortal(
     <>
-      {noH3Data && (
+      {noDataMessage && (
         <div
           role="status"
           style={{
@@ -471,9 +644,10 @@ export default function H3IndicatorLayer({
             padding: "8px 12px",
             borderRadius: 4,
             boxShadow: "0 1px 4px rgba(0, 0, 0, 0.3)",
+            pointerEvents: "none",
           }}
         >
-          No H3 data for this indicator
+          {noDataMessage}
         </div>
       )}
       {resolutions.length > 1 && (
@@ -495,9 +669,22 @@ export default function H3IndicatorLayer({
           <label>
             H3 resolution{" "}
             <select
-              value={resolution ?? ""}
-              onChange={(evt) => setResolution(parseInt(evt.target.value))}
+              value={mode === "auto" ? "auto" : (selectedResolution ?? "")}
+              onChange={(evt) =>
+                evt.target.value === "auto"
+                  ? updateH3Map({ mode: "auto" })
+                  : updateH3Map({
+                      mode: "manual",
+                      selectedResolution: parseInt(evt.target.value),
+                    })
+              }
             >
+              <option value="auto">
+                Auto (follows zoom)
+                {mode === "auto" && shownResolution !== null
+                  ? `: ${shownResolution}`
+                  : ""}
+              </option>
               {resolutions.map((res) => (
                 <option key={res} value={res}>
                   {res}

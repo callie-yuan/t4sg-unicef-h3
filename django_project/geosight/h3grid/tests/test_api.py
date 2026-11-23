@@ -15,17 +15,26 @@ __date__ = '24/10/2026'
 __copyright__ = ('Copyright 2023, Unicef')
 
 from datetime import date
+from unittest import mock
 
+import h3
 from django.urls import reverse
 
 from core.models.profile import ROLES
 from core.tests.base_tests import APITestCase
 from core.tests.model_factories import create_user
 from geosight.data.tests.model_factories import IndicatorF, IndicatorValueF
+from geosight.h3grid.models import H3ReferenceLayer, H3ReferenceLayerConfig
 
 RES_6 = ['862a1072fffffff', '862a1073fffffff']
 RES_7 = ['872a10720ffffff', '872a10721ffffff']
 OLD, LATEST = date(2026, 1, 1), date(2026, 2, 1)
+
+# Two cells far apart, a box around the first, and an area around both
+NEAR = h3.latlng_to_cell(3.5, 44.5, 7)
+FAR = h3.latlng_to_cell(5.5, 46.5, 7)
+NEAR_BBOX = '44.4,3.4,44.6,3.6'
+BOTH_WKT = 'POLYGON((44 3, 47 3, 47 6, 44 6, 44 3))'
 
 
 class H3IndicatorApiTest(APITestCase):
@@ -159,3 +168,81 @@ class H3IndicatorApiTest(APITestCase):
                 url, existing.status_code, user=self.viewer
             )
             self.assertEqual(response.status_code, existing.status_code)
+
+
+class H3ValuesBboxApiTest(APITestCase):
+    """Tests for ?bbox= on the H3 values API."""
+
+    def setUp(self):
+        """Create an indicator with two far apart cells, and a clip area."""
+        self.admin = create_user(ROLES.SUPER_ADMIN.name)
+        self.indicator = IndicatorF()
+        for geom_id, value in [(NEAR, 1), (FAR, 2)]:
+            IndicatorValueF(
+                indicator=self.indicator, geom_id=geom_id, admin_level=7,
+                value=value, date=LATEST
+            )
+        self.layer = H3ReferenceLayer.objects.create(
+            identifier='h3-bbox-test', name='H3 bbox layer'
+        )
+        H3ReferenceLayerConfig.objects.create(
+            reference_layer=self.layer, min_resolution=5,
+            default_resolution=7, max_resolution=9, clip_geometry=BOTH_WKT
+        )
+        self.values_url = reverse(
+            'h3-indicator-values', args=[self.indicator.id]
+        ) + '?resolution=7'
+        self.area = f'&reference_layer={self.layer.identifier}'
+
+    def cells(self, query):
+        """Return {geom_id: value} of the values API."""
+        response = self.assertRequestGetView(
+            f'{self.values_url}{query}', 200, user=self.admin
+        )
+        return {row['geom_id']: row['value'] for row in response.json()}
+
+    def test_bbox_returns_only_cells_in_view(self):
+        """Only cells whose center is in the box, with or without an area."""
+        self.assertEqual(self.cells(''), {NEAR: 1, FAR: 2})
+        for query in [f'&bbox={NEAR_BBOX}', f'&bbox={NEAR_BBOX}{self.area}']:
+            with self.subTest(query=query):
+                self.assertEqual(self.cells(query), {NEAR: 1})
+
+    def test_bad_bbox(self):
+        """A bbox that isn't west,south,east,north in degrees is a 400."""
+        for bbox in ['abc', '44,3,45', '44,3,45,4,5', '45,3,44,4',
+                     '44,4,45,3', '-181,3,45,4', '44,-91,45,4']:
+            with self.subTest(bbox=bbox):
+                self.assertRequestGetView(
+                    f'{self.values_url}&bbox={bbox}', 400, user=self.admin
+                )
+
+    def test_bbox_include_empty_only_cells_in_view_and_area(self):
+        """Empty cells come from the part of the area inside the box."""
+        cells = self.cells(f'&bbox={NEAR_BBOX}{self.area}&include_empty=true')
+        bbox = [float(part) for part in NEAR_BBOX.split(',')]
+
+        self.assertGreater(len(cells), 1)
+        self.assertEqual(cells.pop(NEAR), 1)
+        self.assertNotIn(FAR, cells)
+        self.assertEqual(set(cells.values()), {None})
+        for cell in cells:
+            lat, lng = h3.cell_to_latlng(cell)
+            self.assertTrue(bbox[0] <= lng <= bbox[2])
+            self.assertTrue(bbox[1] <= lat <= bbox[3])
+
+    def test_bbox_avoids_the_cell_limit(self):
+        """The whole area is over the limit, the part in view is not."""
+        query = f'{self.area}&include_empty=true'
+        with mock.patch('geosight.h3grid.api.H3_MAX_AREA_CELLS', 1000):
+            self.assertRequestGetView(
+                f'{self.values_url}{query}', 400, user=self.admin
+            )
+            self.cells(f'{query}&bbox={NEAR_BBOX}')
+
+    def test_bbox_outside_area(self):
+        """A box outside the area returns no cells, not even empty ones."""
+        self.assertEqual(
+            self.cells(f'&bbox=10,10,11,11{self.area}&include_empty=true'),
+            {}
+        )

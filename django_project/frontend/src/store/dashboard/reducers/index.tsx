@@ -31,6 +31,7 @@ import relatedTableDataReducer from "./relatedTableData";
 import ReferenceLayerDataReducer from "./referenceLayerData";
 import filteredGeometriesReducer from "./filteredGeometries";
 import globalStateReducer from "./globalState";
+import h3MapReducer from "./h3Map";
 import selectedAdminLevelReducer from "./selectedAdminLevel";
 import selectedBookmarkReducer from "./selectedBookmark";
 import selectedGlobalTimeReducer from "./selectedGlobalTime";
@@ -57,6 +58,7 @@ const rootReducer = combineReducers({
   relatedTableData: relatedTableDataReducer,
   filteredGeometries: filteredGeometriesReducer,
   globalState: globalStateReducer,
+  h3Map: h3MapReducer,
   selectedAdminLevel: selectedAdminLevelReducer,
   selectedBookmark: selectedBookmarkReducer,
   selectedGlobalTime: selectedGlobalTimeReducer,
