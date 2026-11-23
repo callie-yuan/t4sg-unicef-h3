@@ -9,15 +9,26 @@
 {% block scripts %}
     <script>
       const DEFAULT_UUID = '00000000-0000-0000-0000-000000000000'
+      const isH3 = {% if is_h3 %}true{% else %}false{% endif %};
+      {% if is_h3 %}
+      const initialData = {{ h3_initial|safe }};
+      const dataLevels = [];
+      const permission = {};
+      {% else %}
       const initialData = {{ form|get_data|safe }};
       const dataLevels = {{ levels|safe }};
       const permission = {{ permission|safe }};
+      {% endif %}
 
       // Urls api
       urls.api = {
         'detail': '{% url 'reference-datasets-api-detail' '00000000-0000-0000-0000-000000000000' %}',
         'entityBrowser': '{% url 'admin-reference-dataset-entity-list-view' 0 %}',
         'uploadData': '{% url 'admin-reference-dataset-import-data-view' '00000000-0000-0000-0000-000000000000' %}',
+        'h3Create': '{% url 'h3-layer-list' %}',
+        'h3Detail': '{% url 'h3-layer-detail' '00000000-0000-0000-0000-000000000000' %}',
+        'h3Edit': '{% url 'admin-h3-layer-edit-view' '00000000-0000-0000-0000-000000000000' %}',
+        'h3Countries': '/api/v1/h3/countries/',
       }
 
       if (permission.share) {

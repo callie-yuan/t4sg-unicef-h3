@@ -16,3 +16,33 @@
 /* ==========================================================================
    ReferenceLayerView Form style
    ========================================================================== */
+
+.H3LayerForm {
+  max-width: 48rem;
+  padding: 1rem;
+
+  > label,
+  .H3ResolutionFields label {
+    display: block;
+    margin: 0.75rem 0;
+  }
+
+  > input,
+  .H3ResolutionFields input {
+    box-sizing: border-box;
+    display: block;
+    max-width: 100%;
+    padding: 0.5rem;
+    width: 100%;
+  }
+
+  .H3ResolutionFields {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .H3FormError {
+    color: #b42318;
+  }
+}

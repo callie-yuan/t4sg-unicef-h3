@@ -1,0 +1,33 @@
+.AreaInput {
+  margin: 1rem 0;
+  padding: 1rem;
+
+  > label {
+    display: inline-flex;
+    gap: 0.35rem;
+    margin-right: 1.5rem;
+  }
+
+  textarea,
+  input[type='search'] {
+    box-sizing: border-box;
+    display: block;
+    margin-top: 0.75rem;
+    width: 100%;
+  }
+
+  .AreaInputCountries {
+    max-height: 15rem;
+    overflow-y: auto;
+
+    label {
+      display: block;
+      padding: 0.25rem 0;
+    }
+  }
+
+  .AreaInputError,
+  [role='alert'] {
+    color: #b42318;
+  }
+}
