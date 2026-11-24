@@ -37,6 +37,8 @@ import {
 import GeorepoAuthorizationModal
   from "../../../../components/GeorepoAuthorizationModal";
 import { resourceActions } from "../List";
+import { areaErrorMessage, saveProjectArea } from "./General/H3ProjectArea";
+import { isH3ReferenceLayer } from "../../../../utils/referenceLayer";
 
 // Dashboard Preview
 import { postData } from "../../../../Requests";
@@ -392,20 +394,44 @@ export function DashboardSaveForm() {
         JSON.stringify(transparency_config),
       );
       postData(targetUrl, formData, function (response, responseError) {
-        setSubmitted(false);
         if (responseError) {
+          setSubmitted(false);
           notify("" + responseError, NotificationStatus.ERROR);
-        } else {
-          const currUrl = window.location.href.split("#")[0];
-          if (!id) {
-            window.location = response.url;
-          } else if (currUrl !== response.url) {
-            window.location = response.url;
-          } else {
-            notify("Configuration has been saved!", NotificationStatus.SUCCESS);
-            dispatch(Actions.DashboardHistory.applyCheckpoint());
-          }
+          return;
         }
+        // The H3 area is saved after the project, so new projects have one
+        const areaChange = isH3ReferenceLayer(referenceLayer)
+          ? data.h3_area_change
+          : null;
+        saveProjectArea(slug, areaChange)
+          .then(() => {
+            setSubmitted(false);
+            const currUrl = window.location.href.split("#")[0];
+            if (!id) {
+              window.location = response.url;
+            } else if (currUrl !== response.url) {
+              window.location = response.url;
+            } else {
+              if (areaChange) {
+                dispatch(
+                  Actions.Dashboard.updateProps({ h3_area_change: null }),
+                );
+              }
+              notify(
+                "Configuration has been saved!",
+                NotificationStatus.SUCCESS,
+              );
+              dispatch(Actions.DashboardHistory.applyCheckpoint());
+            }
+          })
+          .catch((error) => {
+            setSubmitted(false);
+            notify(
+              "The project was saved, but its area was not: " +
+                areaErrorMessage(error),
+              NotificationStatus.ERROR,
+            );
+          });
       });
     } else {
       notify(errors.join(" "), NotificationStatus.ERROR);
