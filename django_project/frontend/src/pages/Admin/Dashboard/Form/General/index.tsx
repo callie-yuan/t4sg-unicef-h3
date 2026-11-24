@@ -36,6 +36,8 @@ import OverviewForm from "./Overview";
 import DatasetViewSelector from "../../../../../components/ResourceSelector/DatasetViewSelector";
 import { DefaultTimeMode, ReferenceLayer } from "../../../../../types/Project";
 import TransparencySlider from "../../../../../components/TransparencySlider";
+import { isH3ReferenceLayer } from "../../../../../utils/referenceLayer";
+import H3ProjectArea from "./H3ProjectArea";
 
 import "./style.scss";
 import { debounce } from "@mui/material/utils";
@@ -240,6 +242,7 @@ const GeneralForm = memo(({}: Props) => {
                   multipleSelection={false}
                   showSelected={false}
                   includeH3={true}
+                  spatialIndexChoice={true}
                 />
               </div>
             </Grid>
@@ -279,6 +282,10 @@ const GeneralForm = memo(({}: Props) => {
           }
           referenceLayer={referenceLayer}
         />
+        {/* Area of the project, under the H3 settings */}
+        {isH3ReferenceLayer(referenceLayer) ? (
+          <H3ProjectArea referenceLayer={referenceLayer} />
+        ) : null}
         <div className="BasicFormSection">
           <Grid container spacing={2}>
             <Grid item xs={6}>

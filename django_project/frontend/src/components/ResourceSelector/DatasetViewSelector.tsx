@@ -29,6 +29,7 @@ import DatasetSelector from "./DatasetSelectorComponent";
 
 const VALUE_REMOTE = "Remote";
 const VALUE_LOCAL = "Local";
+const VALUE_H3 = "H3";
 
 const columns = [
   { field: "id", headerName: "id", hide: true },
@@ -94,27 +95,45 @@ export default function DatasetViewSelector({
 
   // Also list H3 reference layers
   includeH3,
-}: ModalInputSelectorProps & { includeH3?: boolean }) {
+
+  // List H3 layers under their own "Spatial index" choice, not mixed in
+  // with the boundary datasets
+  spatialIndexChoice,
+}: ModalInputSelectorProps & {
+  includeH3?: boolean;
+  spatialIndexChoice?: boolean;
+}) {
   const [dataset, setDataset] = useState(null);
 
   // @ts-ignore
   const isLocalEnabled = localReferenceDatasetEnabled;
+  const separateH3 = includeH3 && spatialIndexChoice;
   const [sourceType, setSourceType] = useState(
-    // @ts-ignore
-    preferences?.georepo_api?.api_key ? VALUE_REMOTE : VALUE_LOCAL,
+    separateH3 && isH3ReferenceLayer(initData?.[0])
+      ? VALUE_H3
+      : // @ts-ignore
+        preferences?.georepo_api?.api_key
+        ? VALUE_REMOTE
+        : VALUE_LOCAL,
   );
 
   // TODO:
   //  This makes the E2E tests fails, need to check it
   // const url = URLS.ReferenceLayerSelector.VIEW.List('' + dataset, sourceType === VALUE_LOCAL)
 
+  const localUrl =
+    "/api/v1/reference-datasets/?page=1&page_size=25&fields=uuid,bbox,vector_tiles,possible_id_types,dataset_levels,tags,permission,version_data,created_at,modified_at,identifier,name,description,in_georepo,modified_by";
   const url =
-    sourceType === VALUE_REMOTE
-      ? dataset
-        ? GeorepoUrls.WithDomain(`/search/dataset/${dataset}/view/list/`, true)
-        : null
-      : "/api/v1/reference-datasets/?page=1&page_size=25&fields=uuid,bbox,vector_tiles,possible_id_types,dataset_levels,tags,permission,version_data,created_at,modified_at,identifier,name,description,in_georepo,modified_by" +
-        (includeH3 ? ",is_h3&include_h3=true" : "");
+    sourceType === VALUE_H3
+      ? localUrl + ",is_h3&include_h3=true&is_h3=True"
+      : sourceType === VALUE_REMOTE
+        ? dataset
+          ? GeorepoUrls.WithDomain(
+              `/search/dataset/${dataset}/view/list/`,
+              true,
+            )
+          : null
+        : localUrl + (includeH3 && !separateH3 ? ",is_h3&include_h3=true" : "");
 
   /*** Parameters Changed */
   const getParameters = (parameters: any) => {
@@ -155,7 +174,8 @@ export default function DatasetViewSelector({
                 ..._row,
                 id: _row.uuid,
                 identifier: _row.uuid,
-                is_local: sourceType === VALUE_LOCAL,
+                // H3 layers are served like local datasets
+                is_local: sourceType !== VALUE_REMOTE,
               };
             }),
           );
@@ -172,31 +192,42 @@ export default function DatasetViewSelector({
             (isLocalEnabled ? "localDatasetDatasetEnabled" : "")
           }
         >
-          {isLocalEnabled ? (
+          {isLocalEnabled || separateH3 ? (
             <FormControl className="RadioButtonControl">
               <RadioGroup
                 value={sourceType}
                 onChange={(evt) => setSourceType(evt.target.value)}
                 row
               >
-                <FormControlLabel
-                  control={<Radio />}
-                  value={VALUE_LOCAL}
-                  label={VALUE_LOCAL}
-                />
+                {isLocalEnabled ? (
+                  <FormControlLabel
+                    control={<Radio />}
+                    value={VALUE_LOCAL}
+                    label={VALUE_LOCAL}
+                  />
+                ) : null}
                 <FormControlLabel
                   control={<Radio />}
                   value={VALUE_REMOTE}
                   label={"Remote (GeoRepo)"}
                 />
+                {separateH3 ? (
+                  <FormControlLabel
+                    control={<Radio />}
+                    value={VALUE_H3}
+                    label={"Spatial index (H3)"}
+                  />
+                ) : null}
               </RadioGroup>
             </FormControl>
           ) : null}
-          <DatasetSelector
-            dataset={dataset}
-            onChanged={setDataset}
-            sourceType={sourceType}
-          />
+          {sourceType !== VALUE_H3 ? (
+            <DatasetSelector
+              dataset={dataset}
+              onChanged={setDataset}
+              sourceType={sourceType}
+            />
+          ) : null}
         </div>
       }
     />
